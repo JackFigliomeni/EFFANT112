@@ -1,17 +1,28 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ensureProfile } from "@/lib/ensureProfile";
 
 export const runtime = "nodejs";
 
+/** Only allow redirecting to a same-app relative path — never an
+ * absolute/external URL, which would make this an open redirect. */
+function safeNextPath(next: string | null): string {
+  if (next && next.startsWith("/") && !next.startsWith("//") && !next.includes("://")) {
+    return next;
+  }
+  return "/gallery";
+}
+
 /**
- * Phase 4: handles the magic-link redirect, then ensures the user has a
- * workspace — joins one by invite code if given, otherwise creates a new
- * one ("start simple: one workspace per invite link").
+ * Handles every email-link auth flow (magic link, password sign-up
+ * confirmation, password recovery) — they all redirect here with a `code`
+ * to exchange for a session, then ensure the user has a workspace.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const invite = url.searchParams.get("invite");
+  const next = safeNextPath(url.searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=missing_code", url.origin));
@@ -32,44 +43,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?error=no_user", url.origin));
   }
 
-  const { data: existingProfile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!existingProfile) {
-    let workspaceId: string;
-
-    if (invite) {
-      const { data: workspace, error: findError } = await supabase
-        .from("workspaces")
-        .select("id")
-        .eq("invite_code", invite)
-        .maybeSingle();
-      if (findError || !workspace) {
-        return NextResponse.redirect(new URL("/login?error=invalid_invite", url.origin));
-      }
-      workspaceId = workspace.id;
-    } else {
-      const { data: newWorkspace, error: createError } = await supabase
-        .from("workspaces")
-        .insert({ name: `${user.email ?? "New"}'s workspace` })
-        .select("id")
-        .single();
-      if (createError || !newWorkspace) {
-        return NextResponse.redirect(new URL("/login?error=workspace_create_failed", url.origin));
-      }
-      workspaceId = newWorkspace.id;
-    }
-
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert({ id: user.id, workspace_id: workspaceId });
-    if (profileError) {
-      return NextResponse.redirect(new URL("/login?error=profile_create_failed", url.origin));
-    }
+  const result = await ensureProfile(supabase, user.id, user.email, invite);
+  if (!result.ok) {
+    return NextResponse.redirect(new URL(`/login?error=${result.error}`, url.origin));
   }
 
-  return NextResponse.redirect(new URL("/gallery", url.origin));
+  return NextResponse.redirect(new URL(next, url.origin));
 }
