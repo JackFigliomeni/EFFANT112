@@ -10,39 +10,33 @@ the Anthropic API.
 
 ## Status
 
+Live Supabase project connected and verified end-to-end (not just written —
+actually tested against real infrastructure).
+
 | Phase | What | Status |
 |---|---|---|
-| 0 | Project setup | ✅ Scaffolded. Needs your Supabase project + migrations run (see below). |
-| 1 | Engine (`ToolRenderer`) | ✅ Built. Try it at `/tools/demo` once Supabase is connected. |
-| 2 | Manual builder | ✅ Built at `/builder`. |
-| 3 | Prompt → schema | ✅ Built at `/generate` + `/api/generate-schema`. Needs `ANTHROPIC_API_KEY`. |
-| 4 | Auth & workspaces | ✅ Built (`/login`, `/auth/callback`). Needs Supabase email auth enabled + redirect URL allow-listed. |
-| 5 | Private/workspace sharing | ✅ RLS policies + `/gallery`. |
-| 6 | Mobile check | ⚠️ Built with responsive Tailwind classes throughout; you should still open each screen on a phone-width window and confirm nothing scrolls sideways. |
+| 0 | Project setup | ✅ Live Supabase project connected, migrations 0001/0002/0004 run. |
+| 1 | Engine (`ToolRenderer`) | ✅ Verified at `/tools/demo` — input → Supabase → view round-trip confirmed against real data. |
+| 2 | Manual builder | ✅ Built at `/builder`, block add/edit verified in-browser. |
+| 3 | Prompt → schema | ✅ Verified — one real Anthropic call generated a valid 12-block schema from a plain-language prompt. |
+| 4 | Auth & workspaces | ✅ Verified — magic-link sign-in tested for real, workspace auto-created with invite code. |
+| 5 | Private/workspace sharing | ✅ Verified — RLS lockdown migrations (0003/0005) applied; confirmed anonymous reads return `[]` and anonymous inserts get a 401 RLS rejection. |
+| 6 | Mobile check | ✅ Spot-checked at 375px width in-browser — no horizontal scroll, dark mode renders correctly. |
 | 7 | Pilot | Not started — this is a people step, not a build step. |
 
 ## What's left that needs you
 
-These all need credentials or an interactive login I don't have — everything
-else is done.
-
-1. **Create a Supabase project** at [supabase.com](https://supabase.com), then
-   copy `.env.example` to `.env.local` and fill in:
-   - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Project
-     Settings → API.
-2. **Run the migrations** in `supabase/migrations/` in order (0001 → 0005),
-   either by pasting each into the Supabase SQL Editor, or with the Supabase
-   CLI: `supabase link` then `supabase db push`.
-3. **Enable email auth** in Supabase Auth settings (it's on by default) and
-   add `http://localhost:3000/auth/callback` (and your deployed URL's
-   `/auth/callback`) to **Auth → URL Configuration → Redirect URLs**.
-4. **Get an Anthropic API key** from [console.anthropic.com](https://console.anthropic.com)
-   and set `ANTHROPIC_API_KEY` in `.env.local` (and later, in Vercel's
-   environment variables — this one must NOT have the `NEXT_PUBLIC_` prefix,
-   it's server-only).
-5. **Deploy to Vercel**: `vercel login`, then `vercel` (or connect the GitHub
-   repo in the Vercel dashboard) and add the three env vars above in the
-   project's Vercel settings.
+1. **Deploy to Vercel**: `vercel login`, then `vercel` (or connect the GitHub
+   repo in the Vercel dashboard) and add these env vars in the project's
+   Vercel settings (same names/values as your `.env.local`):
+   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `ANTHROPIC_API_KEY` (server-only — do NOT prefix with `NEXT_PUBLIC_`)
+2. **Update Supabase's redirect URLs** once deployed: add
+   `https://<your-domain>/auth/callback` alongside the localhost one in
+   **Auth → URL Configuration → Redirect URLs**, and update **Site URL** to
+   your real domain.
+3. **Point your existing domain** at the Vercel deployment (Vercel project
+   settings → Domains).
 
 ## Local development
 

@@ -26,12 +26,28 @@ export default function DemoPage() {
 
     async function ensureDemoTool() {
       try {
-        const { data: existing, error: selectError } = await supabase
-          .from("tools")
-          .select("id")
-          .eq("name", DEMO_TOOL_NAME)
-          .limit(1)
-          .maybeSingle();
+        // Once RLS is locked down (0003/0005), an anonymous request can
+        // neither read nor write `tools` at all — so if someone's signed
+        // in, tag the demo tool as theirs. Pre-auth (or logged out, before
+        // lockdown), this falls back to the old ownerless behavior, which
+        // only keeps working under the permissive dev policies.
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        let workspaceId: string | null = null;
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("workspace_id")
+            .eq("id", user.id)
+            .maybeSingle();
+          workspaceId = profile?.workspace_id ?? null;
+        }
+
+        let query = supabase.from("tools").select("id").eq("name", DEMO_TOOL_NAME);
+        query = user ? query.eq("owner_id", user.id) : query.is("owner_id", null);
+        const { data: existing, error: selectError } = await query.limit(1).maybeSingle();
 
         if (selectError) {
           if (!cancelled) setError(selectError.message);
@@ -44,7 +60,13 @@ export default function DemoPage() {
 
         const { data: created, error: insertError } = await supabase
           .from("tools")
-          .insert({ name: DEMO_TOOL_NAME, schema: habitTrackerSchema, visibility: "private" })
+          .insert({
+            name: DEMO_TOOL_NAME,
+            schema: habitTrackerSchema,
+            visibility: "private",
+            owner_id: user?.id ?? null,
+            workspace_id: workspaceId,
+          })
           .select("id")
           .single();
 
