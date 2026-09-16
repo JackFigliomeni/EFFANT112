@@ -1,8 +1,26 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { validateToolSchema } from "@/lib/schema";
+import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+
+// Very small in-memory per-user rate limit: at most 10 generations per
+// rolling hour. Resets on every deploy/cold start and doesn't share state
+// across serverless instances — it's a speed bump against a signed-in user
+// mashing the button, not a substitute for real infra (Upstash/Vercel
+// Firewall) if this gets real traffic. See the production-readiness notes.
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60 * 60 * 1000;
+const requestLog = new Map<string, number[]>();
+
+function isRateLimited(userId: string): boolean {
+  const now = Date.now();
+  const timestamps = (requestLog.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  timestamps.push(now);
+  requestLog.set(userId, timestamps);
+  return timestamps.length > RATE_LIMIT;
+}
 
 const SYSTEM_PROMPT = `You turn a plain-language description of a small tool into a JSON schema built from exactly six block types. Output ONLY the JSON object — no prose, no markdown code fences.
 
@@ -28,6 +46,23 @@ Example — "a habit tracker":
 {"blocks":[{"type":"input","id":"did_it","label":"Did you do it today?","kind":"boolean"},{"type":"table","id":"log","fields":["did_it","date"]},{"type":"view","id":"streak_view","source":"log","display":"calendar"},{"type":"action","id":"mark_done","does":"add_record","target":"log"},{"type":"rule","id":"remind","when":"not marked by 8pm","then":"notify"}]}`;
 
 export async function POST(request: Request) {
+  // Require sign-in: this route spends real Anthropic API budget per call,
+  // and was previously callable by anyone, signed in or not — including
+  // directly via POST, bypassing the /generate page entirely.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Sign in to generate a tool." }, { status: 401 });
+  }
+  if (isRateLimited(user.id)) {
+    return NextResponse.json(
+      { error: "Rate limit reached — try again in a bit." },
+      { status: 429 },
+    );
+  }
+
   let prompt: string;
   try {
     const body = await request.json();

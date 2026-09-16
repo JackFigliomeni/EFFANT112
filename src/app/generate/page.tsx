@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { BUILDER_PREFILL_KEY } from "@/app/builder/page";
 
 /**
@@ -65,7 +66,20 @@ export default function GeneratePage() {
         {loading ? "Generating…" : "Generate"}
       </button>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="text-sm text-red-600">
+          {error}
+          {error.toLowerCase().includes("sign in") && (
+            <>
+              {" "}
+              <Link href="/login" className="underline">
+                Sign in
+              </Link>
+              .
+            </>
+          )}
+        </p>
+      )}
     </div>
   );
 }

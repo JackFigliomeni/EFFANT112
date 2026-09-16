@@ -7,10 +7,26 @@ import { createClient } from "@/lib/supabase/client";
 // Depends on runtime env vars — never prerender it statically at build time.
 export const dynamic = "force-dynamic";
 
+const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
+  missing_code: "That sign-in link was missing something — try sending a new one.",
+  no_user: "Couldn't confirm your account — try signing in again.",
+  invalid_invite: "That invite code doesn't match any workspace.",
+  workspace_create_failed: "Couldn't create your workspace — try again in a moment.",
+  profile_create_failed: "Couldn't finish setting up your account — try again in a moment.",
+};
+
 function LoginPageInner() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const invite = searchParams.get("invite");
+  // The /auth/callback route redirects here with ?error=<code> on failure
+  // (e.g. an invalid/expired magic link, a bad invite code) — this was
+  // previously silently dropped, leaving the user on a blank login page
+  // with no explanation.
+  const callbackErrorCode = searchParams.get("error");
+  const callbackError = callbackErrorCode
+    ? CALLBACK_ERROR_MESSAGES[callbackErrorCode] ?? decodeURIComponent(callbackErrorCode)
+    : null;
 
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -46,6 +62,10 @@ function LoginPageInner() {
           </p>
         )}
       </div>
+
+      {callbackError && (
+        <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-600">{callbackError}</p>
+      )}
 
       {sent ? (
         <p className="text-sm">Check your email for a magic link.</p>
