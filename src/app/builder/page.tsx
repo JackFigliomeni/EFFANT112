@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import {
   BLOCK_TYPES,
@@ -31,7 +32,7 @@ function BuilderPageInner() {
   const [toolId, setToolId] = useState<string | null>(editingId);
   const [name, setName] = useState("Untitled tool");
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [visibility, setVisibility] = useState<"private" | "workspace">("private");
+  const [visibility, setVisibility] = useState<"private" | "workspace" | "public">("private");
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // Phase 4 tagging: who's creating this tool and which workspace it belongs
@@ -130,12 +131,25 @@ function BuilderPageInner() {
 
     try {
       if (toolId) {
-        const { error } = await supabase
+        // .select().single() matters here: an update that matches zero rows
+        // (e.g. RLS silently blocking a non-owner's edit of a public tool)
+        // otherwise returns no error and no data — without checking `data`,
+        // this would report "Saved." even though nothing changed.
+        const { data, error } = await supabase
           .from("tools")
           .update({ name, schema, visibility })
-          .eq("id", toolId);
-        if (error) setStatus(`Save failed: ${error.message}`);
-        else setStatus("Saved.");
+          .eq("id", toolId)
+          .select("id")
+          .single();
+        if (error || !data) {
+          setStatus(
+            error?.code === "PGRST116"
+              ? "You don't have permission to edit this tool."
+              : `Save failed: ${error?.message ?? "unknown error"}`,
+          );
+        } else {
+          setStatus("Saved.");
+        }
       } else {
         const { data, error } = await supabase
           .from("tools")
@@ -190,7 +204,7 @@ function BuilderPageInner() {
         <fieldset className="flex flex-col gap-1 text-sm">
           <legend className="mb-1">Visibility</legend>
           <div className="flex gap-4">
-            {(["private", "workspace"] as const).map((v) => (
+            {(["private", "workspace", "public"] as const).map((v) => (
               <label key={v} className="flex items-center gap-1.5">
                 <input
                   type="radio"
@@ -205,6 +219,13 @@ function BuilderPageInner() {
           {!owner && (
             <p className="text-xs text-black/50 dark:text-white/50">
               Sign in for &ldquo;workspace&rdquo; visibility to actually be shared with anyone.
+            </p>
+          )}
+          {visibility === "public" && (
+            <p className="text-xs text-amber-600">
+              Visible to anyone on the internet, even without an account — it&rsquo;ll show up on
+              the <Link href="/community" className="underline">Community</Link> page. Only you
+              can still edit it or add records.
             </p>
           )}
         </fieldset>

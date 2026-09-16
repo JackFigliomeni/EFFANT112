@@ -26,10 +26,18 @@ export default async function GalleryPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  const { data: tools, error } = await supabase
+  // Explicit filter, not just RLS: RLS additionally allows reading ANY
+  // public tool (so the /community page works), so without this filter
+  // every public tool from every workspace would leak into "your"
+  // workspace's gallery too.
+  let toolsQuery = supabase
     .from("tools")
     .select("id, name, visibility, owner_id")
     .order("created_at", { ascending: false });
+  toolsQuery = profile?.workspace_id
+    ? toolsQuery.or(`owner_id.eq.${user.id},workspace_id.eq.${profile.workspace_id}`)
+    : toolsQuery.eq("owner_id", user.id);
+  const { data: tools, error } = await toolsQuery;
 
   const workspace = profile?.workspaces as unknown as { name: string; invite_code: string } | null;
 

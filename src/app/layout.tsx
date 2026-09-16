@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 const NAV_LINKS = [
+  { href: "/community", label: "Community" },
   { href: "/gallery", label: "Gallery" },
   { href: "/generate", label: "Generate" },
   { href: "/builder", label: "Builder" },
@@ -46,6 +47,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </nav>
         </header>
         <main className="flex-1">{children}</main>
+        <footer className="flex justify-center gap-4 border-t border-black/10 px-6 py-4 text-xs text-black/50 dark:border-white/10 dark:text-white/50">
+          <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
+          <Link href="/terms" className="hover:underline">Terms of Service</Link>
+        </footer>
       </body>
     </html>
   );

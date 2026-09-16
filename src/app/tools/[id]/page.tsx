@@ -7,9 +7,13 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data: tool, error } = await supabase
     .from("tools")
-    .select("id, name, schema")
+    .select("id, name, schema, owner_id")
     .eq("id", id)
     .single();
 
@@ -36,9 +40,11 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
     <div className="mx-auto flex max-w-lg flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{tool.name}</h1>
-        <Link href={`/builder?id=${tool.id}`} className="text-sm underline">
-          Edit
-        </Link>
+        {user?.id === tool.owner_id && (
+          <Link href={`/builder?id=${tool.id}`} className="text-sm underline">
+            Edit
+          </Link>
+        )}
       </div>
       <ToolRenderer schema={validation.schema} toolId={tool.id} />
     </div>
