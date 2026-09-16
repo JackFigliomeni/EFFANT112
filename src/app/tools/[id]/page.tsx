@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { validateToolSchema } from "@/lib/schema";
 import { ToolRenderer } from "@/components/renderer/ToolRenderer";
+import { ReportButton } from "@/components/ReportButton";
 
 export default async function ToolPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,7 +14,7 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
 
   const { data: tool, error } = await supabase
     .from("tools")
-    .select("id, name, schema, owner_id")
+    .select("id, name, schema, owner_id, visibility")
     .eq("id", id)
     .single();
 
@@ -47,6 +48,9 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
         )}
       </div>
       <ToolRenderer schema={validation.schema} toolId={tool.id} />
+      {tool.visibility === "public" && user?.id !== tool.owner_id && (
+        <ReportButton toolId={tool.id} />
+      )}
     </div>
   );
 }

@@ -2,24 +2,33 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { validateToolSchema } from "@/lib/schema";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-// Very small in-memory per-user rate limit: at most 10 generations per
-// rolling hour. Resets on every deploy/cold start and doesn't share state
-// across serverless instances — it's a speed bump against a signed-in user
-// mashing the button, not a substitute for real infra (Upstash/Vercel
-// Firewall) if this gets real traffic. See the production-readiness notes.
+// Postgres-backed per-user rate limit: at most 10 generations per rolling
+// hour, logged in the `generation_requests` table (migration 0007). Durable
+// and shared across every serverless instance — unlike an in-memory Map,
+// which resets on every cold start and doesn't share state across
+// instances, so under real traffic it wasn't really limiting anything.
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
-const requestLog = new Map<string, number[]>();
 
-function isRateLimited(userId: string): boolean {
-  const now = Date.now();
-  const timestamps = (requestLog.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  timestamps.push(now);
-  requestLog.set(userId, timestamps);
-  return timestamps.length > RATE_LIMIT;
+async function isRateLimited(supabase: SupabaseClient, userId: string): Promise<boolean> {
+  const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
+  const { count, error } = await supabase
+    .from("generation_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", windowStart);
+
+  // Fail open on a count-check error (e.g. a transient DB hiccup) rather
+  // than blocking every generation because the rate limiter itself broke.
+  if (error) {
+    console.error("generate-schema: rate limit check failed", error.message);
+    return false;
+  }
+  return (count ?? 0) >= RATE_LIMIT;
 }
 
 const SYSTEM_PROMPT = `You turn a plain-language description of a small tool into a JSON schema built from exactly six block types. Output ONLY the JSON object — no prose, no markdown code fences.
@@ -56,7 +65,7 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Sign in to generate a tool." }, { status: 401 });
   }
-  if (isRateLimited(user.id)) {
+  if (await isRateLimited(supabase, user.id)) {
     return NextResponse.json(
       { error: "Rate limit reached — try again in a bit." },
       { status: 429 },
@@ -80,6 +89,16 @@ export async function POST(request: Request) {
       { error: "ANTHROPIC_API_KEY is not set on the server." },
       { status: 500 },
     );
+  }
+
+  // Log the attempt before calling Anthropic (not after success) — an
+  // errored call still consumed a rate-limit slot, which also protects
+  // against retry storms on a flaky/erroring prompt.
+  const { error: logError } = await supabase
+    .from("generation_requests")
+    .insert({ user_id: user.id });
+  if (logError) {
+    console.error("generate-schema: failed to log rate-limit row", logError.message);
   }
 
   const client = new Anthropic();
