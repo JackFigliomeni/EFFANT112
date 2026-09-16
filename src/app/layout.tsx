@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AuthNavStatus } from "@/components/AuthNavStatus";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,7 +26,6 @@ const NAV_LINKS = [
   { href: "/generate", label: "Generate" },
   { href: "/builder", label: "Builder" },
   { href: "/tools/demo", label: "Phase 1 demo" },
-  { href: "/login", label: "Sign in" },
 ];
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -38,12 +39,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Link href="/" className="text-sm font-semibold">
             Small Software Workspace
           </Link>
-          <nav className="flex flex-wrap gap-3 text-sm text-black/60 dark:text-white/60">
+          <nav className="flex flex-wrap items-center gap-3 text-sm text-black/60 dark:text-white/60">
             {NAV_LINKS.map((link) => (
               <Link key={link.href} href={link.href} className="hover:underline hover:text-black dark:hover:text-white">
                 {link.label}
               </Link>
             ))}
+            <Suspense fallback={<span className="opacity-0">Sign in</span>}>
+              <AuthNavStatus />
+            </Suspense>
           </nav>
         </header>
         <main className="flex-1">{children}</main>
