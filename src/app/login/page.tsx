@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -20,7 +20,6 @@ type Mode = "signin" | "signup" | "magiclink";
 
 function LoginPageInner() {
   const supabase = createClient();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const invite = searchParams.get("invite");
   // The /auth/callback route redirects here with ?error=<code> on failure
@@ -54,13 +53,13 @@ function LoginPageInner() {
       // Non-fatal — gallery/builder will still work, just without a
       // workspace until this succeeds on a later visit.
     }
-    // router.refresh() matters here: without it, Next's client-side router
-    // cache can reuse the root layout's previous (signed-out) render — the
-    // nav briefly/incorrectly shows "Sign in" after a real sign-in, since a
-    // plain push() doesn't know auth state changed (it's not in the URL).
-    // SignOutButton already does this for the opposite direction.
-    router.refresh();
-    router.push("/gallery");
+    // A full navigation, not router.push(): tried push()+refresh() first,
+    // but Next's client-side router cache still reuse the root layout's
+    // previous (signed-out) render in testing — the nav kept incorrectly
+    // showing "Sign in" right after a real sign-in. Sign-in is a rare,
+    // one-time action, so the cost of a full page load here is negligible
+    // next to actually being reliable.
+    window.location.href = "/gallery";
   }
 
   async function submitPassword() {
