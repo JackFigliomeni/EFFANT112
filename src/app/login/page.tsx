@@ -54,6 +54,12 @@ function LoginPageInner() {
       // Non-fatal — gallery/builder will still work, just without a
       // workspace until this succeeds on a later visit.
     }
+    // router.refresh() matters here: without it, Next's client-side router
+    // cache can reuse the root layout's previous (signed-out) render — the
+    // nav briefly/incorrectly shows "Sign in" after a real sign-in, since a
+    // plain push() doesn't know auth state changed (it's not in the URL).
+    // SignOutButton already does this for the opposite direction.
+    router.refresh();
     router.push("/gallery");
   }
 
