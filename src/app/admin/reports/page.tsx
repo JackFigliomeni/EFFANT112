@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { DismissReportButton } from "@/components/DismissReportButton";
 
 export default async function AdminReportsPage() {
   const supabase = await createClient();
@@ -41,8 +42,9 @@ export default async function AdminReportsPage() {
                 <a href={`/tools/${r.tool_id}`} className="font-medium hover:underline">
                   {tool?.name ?? r.tool_id}
                 </a>
-                <span className="text-xs text-black/50 dark:text-white/50">
+                <span className="flex items-center gap-3 text-xs text-black/50 dark:text-white/50">
                   {new Date(r.created_at).toLocaleString()}
+                  <DismissReportButton reportId={r.id} />
                 </span>
               </div>
               <p className="text-black/70 dark:text-white/70">{r.reason}</p>
