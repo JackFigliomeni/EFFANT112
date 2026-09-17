@@ -13,11 +13,38 @@ export const BLOCK_TYPES = [
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
-export const INPUT_KINDS = ["boolean", "text", "number", "date"] as const;
+export const INPUT_KINDS = [
+  "text",
+  "textarea",
+  "number",
+  "boolean",
+  "date",
+  "time",
+  "email",
+  "url",
+  "select",
+  "multiselect",
+  "rating",
+] as const;
 export type InputKind = (typeof INPUT_KINDS)[number];
 
-export const VIEW_DISPLAYS = ["calendar", "list", "table", "count"] as const;
+// select/multiselect need a fixed list of choices to pick from.
+const INPUT_KINDS_NEEDING_OPTIONS = ["select", "multiselect"] as const;
+
+export const VIEW_DISPLAYS = [
+  "calendar",
+  "list",
+  "table",
+  "count",
+  "sum",
+  "average",
+  "latest",
+  "chart",
+] as const;
 export type ViewDisplay = (typeof VIEW_DISPLAYS)[number];
+
+// sum/average/chart aggregate one specific numeric field across records.
+const VIEW_DISPLAYS_NEEDING_FIELD = ["sum", "average", "chart"] as const;
 
 export const ACTION_DOES = ["add_record", "update_record", "delete_record"] as const;
 export type ActionDoes = (typeof ACTION_DOES)[number];
@@ -27,6 +54,8 @@ const inputBlockSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   kind: z.enum(INPUT_KINDS),
+  // Required (and only meaningful) for kind "select"/"multiselect".
+  options: z.array(z.string().min(1)).min(1).max(50).optional(),
 });
 
 const tableBlockSchema = z.object({
@@ -40,6 +69,8 @@ const viewBlockSchema = z.object({
   id: z.string().min(1),
   source: z.string().min(1),
   display: z.enum(VIEW_DISPLAYS),
+  // Required for "sum"/"average"/"chart" — which numeric field to aggregate.
+  field: z.string().min(1).optional(),
 });
 
 const actionBlockSchema = z.object({
@@ -48,6 +79,9 @@ const actionBlockSchema = z.object({
   does: z.enum(ACTION_DOES),
   target: z.string().min(1),
   label: z.string().optional(),
+  // Required for "update_record" — which boolean field it toggles. Ignored
+  // for "delete_record" (a plain delete-this-row button) and "add_record".
+  field: z.string().min(1).optional(),
 });
 
 const ruleBlockSchema = z.object({
@@ -57,13 +91,41 @@ const ruleBlockSchema = z.object({
   then: z.string().min(1),
 });
 
-export const blockSchema = z.discriminatedUnion("type", [
-  inputBlockSchema,
-  tableBlockSchema,
-  viewBlockSchema,
-  actionBlockSchema,
-  ruleBlockSchema,
-]);
+export const blockSchema = z
+  .discriminatedUnion("type", [
+    inputBlockSchema,
+    tableBlockSchema,
+    viewBlockSchema,
+    actionBlockSchema,
+    ruleBlockSchema,
+  ])
+  .superRefine((block, ctx) => {
+    if (block.type === "input" && INPUT_KINDS_NEEDING_OPTIONS.includes(block.kind as "select" | "multiselect")) {
+      if (!block.options || block.options.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `input "${block.id}" of kind "${block.kind}" needs a non-empty "options" list`,
+          path: ["options"],
+        });
+      }
+    }
+    if (block.type === "view" && VIEW_DISPLAYS_NEEDING_FIELD.includes(block.display as "sum" | "average" | "chart")) {
+      if (!block.field) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `view "${block.id}" with display "${block.display}" needs a "field" to aggregate`,
+          path: ["field"],
+        });
+      }
+    }
+    if (block.type === "action" && block.does === "update_record" && !block.field) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `action "${block.id}" with does "update_record" needs a "field" to toggle`,
+        path: ["field"],
+      });
+    }
+  });
 
 export type InputBlock = z.infer<typeof inputBlockSchema>;
 export type TableBlock = z.infer<typeof tableBlockSchema>;

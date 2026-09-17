@@ -31,15 +31,15 @@ async function isRateLimited(supabase: SupabaseClient, userId: string): Promise<
   return (count ?? 0) >= RATE_LIMIT;
 }
 
-const SYSTEM_PROMPT = `You turn a plain-language description of a small tool into a JSON schema built from exactly six block types. Output ONLY the JSON object — no prose, no markdown code fences.
+const SYSTEM_PROMPT = `You turn a plain-language description of a small tool into a JSON schema built from exactly five block types. Output ONLY the JSON object — no prose, no markdown code fences.
 
 Shape:
 {
   "blocks": [
-    { "type": "input", "id": "<snake_case>", "label": "<question text>", "kind": "boolean" | "text" | "number" | "date" },
+    { "type": "input", "id": "<snake_case>", "label": "<question text>", "kind": "text" | "textarea" | "number" | "boolean" | "date" | "time" | "email" | "url" | "select" | "multiselect" | "rating", "options": ["<choice>", ...] },
     { "type": "table", "id": "<snake_case>", "fields": ["<field ids matching input block ids>", ...] },
-    { "type": "view", "id": "<snake_case>", "source": "<a table block's id>", "display": "calendar" | "list" | "table" | "count" },
-    { "type": "action", "id": "<snake_case>", "does": "add_record" | "update_record" | "delete_record", "target": "<a table block's id>", "label": "<optional button text>" },
+    { "type": "view", "id": "<snake_case>", "source": "<a table block's id>", "display": "calendar" | "list" | "table" | "count" | "sum" | "average" | "latest" | "chart", "field": "<numeric field, for sum/average/chart>" },
+    { "type": "action", "id": "<snake_case>", "does": "add_record" | "update_record" | "delete_record", "target": "<a table block's id>", "label": "<optional button text>", "field": "<boolean field to toggle, for update_record>" },
     { "type": "rule", "id": "<snake_case>", "when": "<plain-language condition>", "then": "<plain-language effect>" }
   ]
 }
@@ -47,12 +47,23 @@ Shape:
 Rules:
 - Every id is unique and snake_case.
 - Include at least one input, one table, one view, and one action. Only add a rule block if the description implies a reminder/condition.
+- "options" is REQUIRED (2+ choices) for input kind "select"/"multiselect", and meaningless for every other kind — omit it otherwise.
+- "field" on a view is REQUIRED for display "sum"/"average"/"chart" (must be a numeric input's id) and meaningless otherwise.
+- "field" on an action is REQUIRED for does "update_record" (must be a boolean input's id — the action becomes a per-row toggle button) and meaningless for "add_record"/"delete_record". "delete_record" needs no "field" — it's a per-row delete button.
 - A table's "fields" must be ids of input blocks (plus you may add a "date" field even with no matching input — it's implicit).
 - A view's "source" and an action's "target" must reference an existing table block's id.
-- Prefer "calendar" for daily-habit-shaped tools, "table" for structured logs, "list" for freeform logs, "count" for simple tallies.
+- Prefer "calendar" for daily-habit-shaped tools, "table" for structured/multi-field logs, "list" for freeform logs, "count" for simple tallies, "sum"/"average" for numeric totals (spending, hours, etc.), "chart" for a trend over time, "latest" for "what's the most recent entry".
+- For a checklist/todo-shaped tool: give the table a boolean field (e.g. "done"), add an "update_record" action with that field to let people check items off, and usually a "delete_record" action too.
+- Use "select" for a single choice from a short fixed list (e.g. mood, category), "multiselect" for choosing several, "rating" for a 1-5 scale, "textarea" for freeform notes longer than a line, "email"/"url" for those specific formats.
 
 Example — "a habit tracker":
-{"blocks":[{"type":"input","id":"did_it","label":"Did you do it today?","kind":"boolean"},{"type":"table","id":"log","fields":["did_it","date"]},{"type":"view","id":"streak_view","source":"log","display":"calendar"},{"type":"action","id":"mark_done","does":"add_record","target":"log"},{"type":"rule","id":"remind","when":"not marked by 8pm","then":"notify"}]}`;
+{"blocks":[{"type":"input","id":"did_it","label":"Did you do it today?","kind":"boolean"},{"type":"table","id":"log","fields":["did_it","date"]},{"type":"view","id":"streak_view","source":"log","display":"calendar"},{"type":"action","id":"mark_done","does":"add_record","target":"log"},{"type":"rule","id":"remind","when":"not marked by 8pm","then":"notify"}]}
+
+Example — "a todo list":
+{"blocks":[{"type":"input","id":"task","label":"Task","kind":"text"},{"type":"table","id":"tasks","fields":["task","done"]},{"type":"view","id":"task_list","source":"tasks","display":"list"},{"type":"action","id":"add_task","does":"add_record","target":"tasks","label":"Add task"},{"type":"action","id":"toggle_done","does":"update_record","target":"tasks","field":"done"},{"type":"action","id":"remove_task","does":"delete_record","target":"tasks"}]}
+
+Example — "track my daily spending":
+{"blocks":[{"type":"input","id":"amount","label":"Amount ($)","kind":"number"},{"type":"input","id":"category","label":"Category","kind":"select","options":["Food","Transport","Fun","Bills","Other"]},{"type":"table","id":"expenses","fields":["amount","category"]},{"type":"view","id":"total","source":"expenses","display":"sum","field":"amount"},{"type":"view","id":"trend","source":"expenses","display":"chart","field":"amount"},{"type":"action","id":"log_expense","does":"add_record","target":"expenses","label":"Log expense"}]}`;
 
 export async function POST(request: Request) {
   // Require sign-in: this route spends real Anthropic API budget per call,

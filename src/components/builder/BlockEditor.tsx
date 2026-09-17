@@ -63,6 +63,21 @@ export function BlockEditor({
               ))}
             </select>
           </label>
+          {(block.kind === "select" || block.kind === "multiselect") && (
+            <label className="flex flex-col gap-1 text-xs">
+              Options (comma separated)
+              <input
+                className={fieldClass}
+                value={(block.options ?? []).join(", ")}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    options: e.target.value.split(",").map((o) => o.trim()).filter(Boolean),
+                  })
+                }
+              />
+            </label>
+          )}
         </>
       )}
 
@@ -101,6 +116,17 @@ export function BlockEditor({
               ))}
             </select>
           </label>
+          {(block.display === "sum" || block.display === "average" || block.display === "chart") && (
+            <label className="flex flex-col gap-1 text-xs">
+              Field to aggregate
+              <input
+                className={fieldClass}
+                value={block.field ?? ""}
+                onChange={(e) => onChange({ ...block, field: e.target.value })}
+                placeholder="a numeric field on the source table"
+              />
+            </label>
+          )}
         </>
       )}
 
@@ -134,6 +160,21 @@ export function BlockEditor({
               onChange={(e) => onChange({ ...block, label: e.target.value })}
             />
           </label>
+          {block.does === "update_record" && (
+            <label className="flex flex-col gap-1 text-xs">
+              Boolean field to toggle
+              <input
+                className={fieldClass}
+                value={block.field ?? ""}
+                onChange={(e) => onChange({ ...block, field: e.target.value })}
+              />
+            </label>
+          )}
+          {(block.does === "update_record" || block.does === "delete_record") && (
+            <p className="text-xs text-black/40 dark:text-white/40">
+              Shown as a per-row button on any view of this table, not a standalone button.
+            </p>
+          )}
         </>
       )}
 

@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { ToolSchema, TableBlock } from "@/lib/schema";
+import type { ToolSchema, TableBlock, ActionBlock } from "@/lib/schema";
 import { ViewBlockRenderer } from "./blocks/ViewBlockRenderer";
+import { InputBlockRenderer } from "./blocks/InputBlockRenderer";
 
 type Row = { id: string; data: Record<string, unknown>; created_at: string };
 
 /**
- * Phase 1 engine: given a tool's `schema` (input/table/view/action/rule
- * blocks) and the row id of that tool in the `tools` table, renders a fully
- * working interactive page — inputs write to a draft, actions persist that
- * draft to Supabase, and views read straight back out of it.
+ * The engine: given a tool's `schema` (input/table/view/action/rule blocks)
+ * and the row id of that tool in the `tools` table, renders a fully working
+ * interactive page — inputs write to a draft, actions persist that draft
+ * (or edit/delete an existing record) to Supabase, and views read straight
+ * back out of it.
  */
 export function ToolRenderer({ schema, toolId }: { schema: ToolSchema; toolId: string }) {
   const supabase = createClient();
@@ -20,6 +22,7 @@ export function ToolRenderer({ schema, toolId }: { schema: ToolSchema; toolId: s
   const [status, setStatus] = useState<string | null>(null);
 
   const tableBlocks = schema.blocks.filter((b): b is TableBlock => b.type === "table");
+  const actionBlocks = schema.blocks.filter((b): b is ActionBlock => b.type === "action");
 
   const fetchTable = useCallback(
     async (tableId: string) => {
@@ -54,33 +57,62 @@ export function ToolRenderer({ schema, toolId }: { schema: ToolSchema; toolId: s
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toolId]);
 
-  async function handleAction(actionTarget: string, does: string) {
+  async function handleAddRecord(tableId: string) {
     setStatus(null);
-    if (does === "add_record") {
-      const table = tableBlocks.find((t) => t.id === actionTarget);
-      const data = table
-        ? Object.fromEntries(table.fields.map((f) => [f, draft[f] ?? null]))
-        : draft;
+    const table = tableBlocks.find((t) => t.id === tableId);
+    const data = table
+      ? Object.fromEntries(table.fields.map((f) => [f, draft[f] ?? null]))
+      : draft;
 
-      try {
-        const { error } = await supabase.from("tool_records").insert({
-          tool_id: toolId,
-          table_id: actionTarget,
-          data,
-        });
-
-        if (error) {
-          setStatus(`Save failed: ${error.message}`);
-          return;
-        }
-        setStatus("Saved.");
-        await fetchTable(actionTarget);
-      } catch (err) {
-        setStatus(err instanceof Error ? `Save failed: ${err.message}` : "Save failed.");
+    try {
+      const { error } = await supabase.from("tool_records").insert({
+        tool_id: toolId,
+        table_id: tableId,
+        data,
+      });
+      if (error) {
+        setStatus(`Save failed: ${error.message}`);
+        return;
       }
-      return;
+      setStatus("Saved.");
+      await fetchTable(tableId);
+    } catch (err) {
+      setStatus(err instanceof Error ? `Save failed: ${err.message}` : "Save failed.");
     }
-    setStatus(`"${does}" isn't implemented yet.`);
+  }
+
+  async function handleDeleteRecord(recordId: string, tableId: string) {
+    setStatus(null);
+    try {
+      const { error } = await supabase.from("tool_records").delete().eq("id", recordId);
+      if (error) {
+        setStatus(`Delete failed: ${error.message}`);
+        return;
+      }
+      setStatus("Deleted.");
+      await fetchTable(tableId);
+    } catch (err) {
+      setStatus(err instanceof Error ? `Delete failed: ${err.message}` : "Delete failed.");
+    }
+  }
+
+  async function handleToggleField(recordId: string, tableId: string, field: string) {
+    setStatus(null);
+    const row = (rowsByTable[tableId] ?? []).find((r) => r.id === recordId);
+    if (!row) return;
+    const updatedData = { ...row.data, [field]: !row.data[field] };
+
+    try {
+      const { error } = await supabase.from("tool_records").update({ data: updatedData }).eq("id", recordId);
+      if (error) {
+        setStatus(`Update failed: ${error.message}`);
+        return;
+      }
+      setStatus("Updated.");
+      await fetchTable(tableId);
+    } catch (err) {
+      setStatus(err instanceof Error ? `Update failed: ${err.message}` : "Update failed.");
+    }
   }
 
   return (
@@ -95,35 +127,11 @@ export function ToolRenderer({ schema, toolId }: { schema: ToolSchema; toolId: s
             return (
               <label key={block.id} className="flex flex-col gap-1 text-sm">
                 <span className="font-medium">{block.label}</span>
-                {block.kind === "boolean" ? (
-                  <input
-                    type="checkbox"
-                    checked={Boolean(draft[block.id])}
-                    onChange={(e) => setDraft((d) => ({ ...d, [block.id]: e.target.checked }))}
-                    className="h-5 w-5"
-                  />
-                ) : block.kind === "number" ? (
-                  <input
-                    type="number"
-                    value={(draft[block.id] as number) ?? ""}
-                    onChange={(e) => setDraft((d) => ({ ...d, [block.id]: Number(e.target.value) }))}
-                    className="rounded-md border border-black/15 px-3 py-2 dark:border-white/20 dark:bg-transparent"
-                  />
-                ) : block.kind === "date" ? (
-                  <input
-                    type="date"
-                    value={(draft[block.id] as string) ?? ""}
-                    onChange={(e) => setDraft((d) => ({ ...d, [block.id]: e.target.value }))}
-                    className="rounded-md border border-black/15 px-3 py-2 dark:border-white/20 dark:bg-transparent"
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={(draft[block.id] as string) ?? ""}
-                    onChange={(e) => setDraft((d) => ({ ...d, [block.id]: e.target.value }))}
-                    className="rounded-md border border-black/15 px-3 py-2 dark:border-white/20 dark:bg-transparent"
-                  />
-                )}
+                <InputBlockRenderer
+                  block={block}
+                  value={draft[block.id]}
+                  onChange={(v) => setDraft((d) => ({ ...d, [block.id]: v }))}
+                />
               </label>
             );
 
@@ -133,23 +141,48 @@ export function ToolRenderer({ schema, toolId }: { schema: ToolSchema; toolId: s
 
           case "view": {
             const rows = rowsByTable[block.source] ?? [];
-            return <ViewBlockRenderer key={block.id} block={block} rows={rows} />;
+            // update_record/delete_record actions targeting this view's
+            // table render as per-row buttons instead of a floating one —
+            // a "delete this row" button needs a row to act on.
+            const deleteAction = actionBlocks.find(
+              (a) => a.does === "delete_record" && a.target === block.source,
+            );
+            const updateAction = actionBlocks.find(
+              (a) => a.does === "update_record" && a.target === block.source,
+            );
+            return (
+              <ViewBlockRenderer
+                key={block.id}
+                block={block}
+                rows={rows}
+                onDelete={deleteAction ? (id) => handleDeleteRecord(id, block.source) : undefined}
+                onToggle={
+                  updateAction
+                    ? (id) => handleToggleField(id, block.source, updateAction.field!)
+                    : undefined
+                }
+                toggleField={updateAction?.field}
+              />
+            );
           }
 
           case "action":
+            // Only add_record makes sense as a standalone button — the
+            // others need a specific row and render inline in the view instead.
+            if (block.does !== "add_record") return null;
             return (
               <button
                 key={block.id}
-                onClick={() => handleAction(block.target, block.does)}
+                onClick={() => handleAddRecord(block.target)}
                 className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
               >
-                {block.label ?? block.does.replace("_", " ")}
+                {block.label ?? "add record"}
               </button>
             );
 
           case "rule":
             // Notifications need server-side infra (cron/push) that's out of
-            // scope for the Phase 1 engine — shown as a passive note for now.
+            // scope for the engine — shown as a passive note for now.
             return (
               <p key={block.id} className="text-xs text-black/50 dark:text-white/50">
                 Rule (not yet enforced): when <em>{block.when}</em>, then <em>{block.then}</em>.

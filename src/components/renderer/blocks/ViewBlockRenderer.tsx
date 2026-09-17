@@ -2,12 +2,147 @@ import type { ViewBlock } from "@/lib/schema";
 
 type Row = { id: string; data: Record<string, unknown>; created_at: string };
 
-export function ViewBlockRenderer({ block, rows }: { block: ViewBlock; rows: Row[] }) {
+function numericValues(rows: Row[], field: string): number[] {
+  return rows
+    .map((r) => Number(r.data[field]))
+    .filter((n) => Number.isFinite(n));
+}
+
+/** Renders a delete (and/or toggle) button after a row's content, if the
+ * schema declared an update_record/delete_record action targeting this
+ * view's source table. */
+function RowActions({
+  rowId,
+  toggleField,
+  toggleValue,
+  onToggle,
+  onDelete,
+}: {
+  rowId: string;
+  toggleField?: string;
+  toggleValue?: unknown;
+  onToggle?: (id: string) => void;
+  onDelete?: (id: string) => void;
+}) {
+  if (!onToggle && !onDelete) return null;
+  return (
+    <span className="ml-2 inline-flex items-center gap-2">
+      {onToggle && toggleField && (
+        <button
+          onClick={() => onToggle(rowId)}
+          className="text-xs underline text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white"
+        >
+          {toggleValue ? `unmark ${toggleField}` : `mark ${toggleField}`}
+        </button>
+      )}
+      {onDelete && (
+        <button
+          onClick={() => onDelete(rowId)}
+          className="text-xs text-red-500 hover:text-red-600"
+          aria-label="Delete"
+        >
+          ×
+        </button>
+      )}
+    </span>
+  );
+}
+
+export function ViewBlockRenderer({
+  block,
+  rows,
+  onDelete,
+  onToggle,
+  toggleField,
+}: {
+  block: ViewBlock;
+  rows: Row[];
+  onDelete?: (id: string) => void;
+  onToggle?: (id: string) => void;
+  toggleField?: string;
+}) {
   if (block.display === "count") {
     return (
       <div className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black/20">
         <div className="text-3xl font-semibold">{rows.length}</div>
         <div className="text-sm text-black/60 dark:text-white/60">records in &ldquo;{block.source}&rdquo;</div>
+      </div>
+    );
+  }
+
+  if (block.display === "sum" || block.display === "average") {
+    const values = block.field ? numericValues(rows, block.field) : [];
+    const result =
+      block.display === "sum"
+        ? values.reduce((a, b) => a + b, 0)
+        : values.length > 0
+          ? values.reduce((a, b) => a + b, 0) / values.length
+          : 0;
+    return (
+      <div className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black/20">
+        <div className="text-3xl font-semibold">{Number.isInteger(result) ? result : result.toFixed(2)}</div>
+        <div className="text-sm text-black/60 dark:text-white/60">
+          {block.display} of &ldquo;{block.field}&rdquo; across {values.length} record{values.length === 1 ? "" : "s"}
+        </div>
+      </div>
+    );
+  }
+
+  if (block.display === "latest") {
+    const latest = rows[0]; // rows already ordered newest-first by the caller
+    return (
+      <div className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black/20">
+        {latest ? (
+          <ul className="text-sm">
+            {Object.entries(latest.data).map(([k, v]) => (
+              <li key={k}>
+                <span className="text-black/50 dark:text-white/50">{k}:</span> {String(v)}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-black/50 dark:text-white/50">No records yet.</p>
+        )}
+      </div>
+    );
+  }
+
+  if (block.display === "chart") {
+    const field = block.field ?? "";
+    // Oldest-to-newest, last 12 points, for a left-to-right reading chart.
+    const points = [...rows]
+      .reverse()
+      .slice(-12)
+      .map((r) => Number(r.data[field]))
+      .map((n) => (Number.isFinite(n) ? n : 0));
+    const max = Math.max(1, ...points);
+    const barWidth = 24;
+    const gap = 6;
+    const height = 100;
+    const width = points.length * (barWidth + gap) || barWidth;
+
+    return (
+      <div className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black/20">
+        {points.length === 0 ? (
+          <p className="text-sm text-black/50 dark:text-white/50">No records yet.</p>
+        ) : (
+          <svg viewBox={`0 0 ${width} ${height}`} className="h-24 w-full" preserveAspectRatio="none">
+            {points.map((v, i) => {
+              const barHeight = (v / max) * (height - 4);
+              return (
+                <rect
+                  key={i}
+                  x={i * (barWidth + gap)}
+                  y={height - barHeight}
+                  width={barWidth}
+                  height={barHeight}
+                  className="fill-emerald-500"
+                />
+              );
+            })}
+          </svg>
+        )}
+        <div className="mt-1 text-xs text-black/50 dark:text-white/50">&ldquo;{field}&rdquo; over time</div>
       </div>
     );
   }
@@ -73,6 +208,7 @@ export function ViewBlockRenderer({ block, rows }: { block: ViewBlock; rows: Row
               {columns.map((c) => (
                 <th key={c} className="px-3 py-2 text-left font-medium">{c}</th>
               ))}
+              {(onDelete || onToggle) && <th className="px-3 py-2" />}
             </tr>
           </thead>
           <tbody>
@@ -81,6 +217,17 @@ export function ViewBlockRenderer({ block, rows }: { block: ViewBlock; rows: Row
                 {columns.map((c) => (
                   <td key={c} className="px-3 py-2">{String(r.data[c])}</td>
                 ))}
+                {(onDelete || onToggle) && (
+                  <td className="px-3 py-2">
+                    <RowActions
+                      rowId={r.id}
+                      toggleField={toggleField}
+                      toggleValue={toggleField ? r.data[toggleField] : undefined}
+                      onToggle={onToggle}
+                      onDelete={onDelete}
+                    />
+                  </td>
+                )}
               </tr>
             ))}
             {rows.length === 0 && (
@@ -98,8 +245,15 @@ export function ViewBlockRenderer({ block, rows }: { block: ViewBlock; rows: Row
   return (
     <ul className="divide-y divide-black/10 rounded-lg border border-black/10 dark:divide-white/10 dark:border-white/10">
       {rows.map((r) => (
-        <li key={r.id} className="px-3 py-2 text-sm">
-          {Object.entries(r.data).map(([k, v]) => `${k}: ${v}`).join(" · ")}
+        <li key={r.id} className="flex items-center justify-between px-3 py-2 text-sm">
+          <span>{Object.entries(r.data).map(([k, v]) => `${k}: ${v}`).join(" · ")}</span>
+          <RowActions
+            rowId={r.id}
+            toggleField={toggleField}
+            toggleValue={toggleField ? r.data[toggleField] : undefined}
+            onToggle={onToggle}
+            onDelete={onDelete}
+          />
         </li>
       ))}
       {rows.length === 0 && (

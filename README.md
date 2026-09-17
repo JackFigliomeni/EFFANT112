@@ -82,14 +82,29 @@ table, `tool_records` (`supabase/migrations/0004_tool_records.sql`) — one
 physical table backs every logical table any tool's schema declares, keyed
 by `(tool_id, table_id)`.
 
+## Block variety
+
+Beyond the original six-block minimum, the engine now supports:
+
+- **Input kinds**: text, textarea, number, boolean, date, time, email, url,
+  select, multiselect, rating (1-5 stars).
+- **View displays**: calendar, list, table, count, sum, average, latest,
+  chart (simple inline-SVG bar chart, last 12 points).
+- **Actions**: `add_record` (a standalone button), `update_record` (a
+  per-row toggle button for a boolean field — e.g. checking off a todo),
+  `delete_record` (a per-row delete button). The latter two render inline
+  in whichever view shows that table, not as a floating button, since they
+  need a specific row to act on.
+
+`/api/generate-schema`'s system prompt knows about all of this, so
+Claude-generated schemas can use the full variety, not just the original six.
+
 ## Known limitations to bring back for Phase 7
 
 - **`rule` blocks are not enforced.** The engine renders them as a passive
   note ("when X, then Y") but nothing actually runs a check or sends a
   notification — that needs a cron/push-notification backend that's out of
-  scope for the six-block engine as specified.
-- `action` only implements `add_record`; `update_record` / `delete_record`
-  are typed in the schema but not wired up in `ToolRenderer` yet.
+  scope for the engine as specified.
 - The prompt-to-schema route (`/api/generate-schema`) uses `claude-opus-5`
   with plain JSON-in-the-prompt instructions rather than the Messages API's
   structured-output mode — swap to `output_config.format` if you want the
