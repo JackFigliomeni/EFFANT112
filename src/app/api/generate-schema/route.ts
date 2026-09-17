@@ -2,33 +2,76 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { validateToolSchema } from "@/lib/schema";
 import { createClient } from "@/lib/supabase/server";
+import { PLAN_LIMITS, isPlan } from "@/lib/plans";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-// Postgres-backed per-user rate limit: at most 10 generations per rolling
-// hour, logged in the `generation_requests` table (migration 0007). Durable
-// and shared across every serverless instance — unlike an in-memory Map,
-// which resets on every cold start and doesn't share state across
-// instances, so under real traffic it wasn't really limiting anything.
-const RATE_LIMIT = 10;
-const RATE_WINDOW_MS = 60 * 60 * 1000;
+// Two independent checks, both Postgres-backed (durable, shared across
+// every serverless instance) via the `generation_requests` log table
+// (migration 0007) — an in-memory Map resets on cold start and doesn't
+// share state across instances, so under real traffic it wasn't really
+// limiting anything.
+//
+// 1. A short-window abuse guard, same for every plan: stops a runaway
+//    script/burst regardless of what someone's actually paying for.
+// 2. The real business limit: a monthly quota that depends on plan
+//    (see src/lib/plans.ts) — this is what Free vs Pro actually means.
+const ABUSE_GUARD_LIMIT = 10;
+const ABUSE_GUARD_WINDOW_MS = 60 * 60 * 1000;
+const PLAN_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-async function isRateLimited(supabase: SupabaseClient, userId: string): Promise<boolean> {
-  const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
-  const { count, error } = await supabase
+async function checkRateLimit(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ limited: false } | { limited: true; reason: string }> {
+  const hourAgo = new Date(Date.now() - ABUSE_GUARD_WINDOW_MS).toISOString();
+  const { count: hourCount, error: hourError } = await supabase
     .from("generation_requests")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .gte("created_at", windowStart);
+    .gte("created_at", hourAgo);
 
   // Fail open on a count-check error (e.g. a transient DB hiccup) rather
   // than blocking every generation because the rate limiter itself broke.
-  if (error) {
-    console.error("generate-schema: rate limit check failed", error.message);
-    return false;
+  if (hourError) {
+    console.error("generate-schema: rate limit check failed", hourError.message);
+    return { limited: false };
   }
-  return (count ?? 0) >= RATE_LIMIT;
+  if ((hourCount ?? 0) >= ABUSE_GUARD_LIMIT) {
+    return { limited: true, reason: "Rate limit reached — try again in a bit." };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan")
+    .eq("id", userId)
+    .maybeSingle();
+  const plan = isPlan(profile?.plan) ? profile.plan : "free";
+  const monthlyLimit = PLAN_LIMITS[plan].generationsPerMonth;
+
+  const monthAgo = new Date(Date.now() - PLAN_WINDOW_MS).toISOString();
+  const { count: monthCount, error: monthError } = await supabase
+    .from("generation_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", monthAgo);
+
+  if (monthError) {
+    console.error("generate-schema: monthly quota check failed", monthError.message);
+    return { limited: false };
+  }
+  if ((monthCount ?? 0) >= monthlyLimit) {
+    return {
+      limited: true,
+      reason:
+        plan === "free"
+          ? `You've used your ${monthlyLimit} free generations this month — upgrade to Pro for more.`
+          : `You've hit your Pro plan's ${monthlyLimit}/month limit — it resets next month.`,
+    };
+  }
+
+  return { limited: false };
 }
 
 const SYSTEM_PROMPT = `You turn a plain-language description of a small tool into a JSON schema built from exactly five block types. Output ONLY the JSON object — no prose, no markdown code fences.
@@ -76,11 +119,9 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Sign in to generate a tool." }, { status: 401 });
   }
-  if (await isRateLimited(supabase, user.id)) {
-    return NextResponse.json(
-      { error: "Rate limit reached — try again in a bit." },
-      { status: 429 },
-    );
+  const rateLimit = await checkRateLimit(supabase, user.id);
+  if (rateLimit.limited) {
+    return NextResponse.json({ error: rateLimit.reason }, { status: 429 });
   }
 
   let prompt: string;

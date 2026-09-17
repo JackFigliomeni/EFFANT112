@@ -99,6 +99,44 @@ Beyond the original six-block minimum, the engine now supports:
 `/api/generate-schema`'s system prompt knows about all of this, so
 Claude-generated schemas can use the full variety, not just the original six.
 
+## Pricing
+
+Free vs Pro is defined in one place, `src/lib/plans.ts`:
+
+| | Free | Pro ($9/month) |
+|---|---|---|
+| Tools | 3 | Unlimited |
+| AI generations | 5/month | 100/month |
+
+Tool limits are enforced in Postgres (migration 0012's `enforce_tool_limit`
+trigger — holds regardless of which client creates a tool). AI generation
+limits are enforced in `/api/generate-schema` two ways: a flat 10/hour abuse
+guard for everyone, and the real plan-based monthly quota above.
+
+**Setup** (needs your own Stripe account — sign up at
+[stripe.com](https://stripe.com)):
+
+1. **Create a Product + Price** for Pro ($9/month, recurring) in the Stripe
+   Dashboard → Product catalog. Copy the **Price ID** (`price_...`) into
+   `STRIPE_PRO_PRICE_ID`.
+2. **Get your secret key** — Developers → API keys → copy the **Secret key**
+   (`sk_...`, use the *test mode* one while developing) into
+   `STRIPE_SECRET_KEY`.
+3. **Set up the webhook** — Developers → Webhooks → Add endpoint, URL
+   `https://<your-domain>/api/stripe/webhook`, listening for
+   `checkout.session.completed`, `customer.subscription.updated`, and
+   `customer.subscription.deleted`. Copy the **signing secret** (`whsec_...`)
+   into `STRIPE_WEBHOOK_SECRET`.
+4. **Get your Supabase service_role key** — Project Settings → API →
+   `service_role` secret — into `SUPABASE_SERVICE_ROLE_KEY`. This is the one
+   key in this app that bypasses RLS entirely; it's used only in
+   `/api/stripe/webhook` (see `src/lib/supabase/admin.ts`) since a webhook
+   call has no logged-in user to scope a normal request to. Never expose it
+   client-side.
+
+All four env vars need setting in Vercel's project settings too, not just
+`.env.local`.
+
 ## Known limitations to bring back for Phase 7
 
 - **`rule` blocks are not enforced.** The engine renders them as a passive

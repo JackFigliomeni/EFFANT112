@@ -309,7 +309,20 @@ function BuilderPageInner() {
           )}
         </div>
 
-        {status && <p className="text-sm">{status}</p>}
+        {status && (
+          <p className="text-sm">
+            {status}
+            {status.includes("upgrade to Pro") && (
+              <>
+                {" "}
+                <Link href="/pricing" className="underline">
+                  See plans
+                </Link>
+                .
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

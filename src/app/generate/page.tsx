@@ -78,6 +78,15 @@ export default function GeneratePage() {
               .
             </>
           )}
+          {error.toLowerCase().includes("upgrade to pro") && (
+            <>
+              {" "}
+              <Link href="/pricing" className="underline">
+                See plans
+              </Link>
+              .
+            </>
+          )}
         </p>
       )}
     </div>
