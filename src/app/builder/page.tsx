@@ -35,6 +35,8 @@ function BuilderPageInner() {
   const [visibility, setVisibility] = useState<"private" | "workspace" | "public">("private");
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   // Phase 4 tagging: who's creating this tool and which workspace it belongs
   // to, so every insert gets tagged automatically. Both stay null pre-auth.
   const [owner, setOwner] = useState<{ userId: string; workspaceId: string | null } | null>(null);
@@ -179,6 +181,23 @@ function BuilderPageInner() {
     }
   }
 
+  async function deleteTool() {
+    if (!toolId) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from("tools").delete().eq("id", toolId);
+      if (error) {
+        setStatus(`Delete failed: ${error.message}`);
+        setDeleting(false);
+        return;
+      }
+      router.push("/gallery");
+    } catch (err) {
+      setStatus(err instanceof Error ? `Delete failed: ${err.message}` : "Delete failed.");
+      setDeleting(false);
+    }
+  }
+
   const previewSchema: ToolSchema = { blocks };
   const previewValid = blocks.length > 0 && validateToolSchema(previewSchema).ok;
 
@@ -253,13 +272,42 @@ function BuilderPageInner() {
           ))}
         </div>
 
-        <button
-          onClick={save}
-          disabled={saving || blocks.length === 0}
-          className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50 dark:bg-white dark:text-black"
-        >
-          {saving ? "Saving…" : toolId ? "Save changes" : "Create tool"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={save}
+            disabled={saving || blocks.length === 0}
+            className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50 dark:bg-white dark:text-black"
+          >
+            {saving ? "Saving…" : toolId ? "Save changes" : "Create tool"}
+          </button>
+
+          {toolId && !confirmingDelete && (
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              className="text-sm text-red-600 underline hover:text-red-700"
+            >
+              Delete tool
+            </button>
+          )}
+          {toolId && confirmingDelete && (
+            <span className="flex items-center gap-2 text-sm">
+              Delete this tool and all its data?
+              <button
+                onClick={deleteTool}
+                disabled={deleting}
+                className="font-medium text-red-600 underline hover:text-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Yes, delete"}
+              </button>
+              <button
+                onClick={() => setConfirmingDelete(false)}
+                className="text-black/50 underline dark:text-white/50"
+              >
+                Cancel
+              </button>
+            </span>
+          )}
+        </div>
 
         {status && <p className="text-sm">{status}</p>}
       </div>
