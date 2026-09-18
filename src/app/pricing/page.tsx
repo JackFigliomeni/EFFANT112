@@ -67,7 +67,9 @@ function PricingInner() {
           <h2 className="text-lg font-semibold">Free</h2>
           <p className="text-2xl font-bold">$0</p>
           <ul className="flex flex-col gap-1 text-sm text-black/70 dark:text-white/70">
-            <li>Up to {PLAN_LIMITS.free.tools} tools</li>
+            <li>
+              Up to {PLAN_LIMITS.free.tools} {PLAN_LIMITS.free.tools === 1 ? "tool" : "tools"}
+            </li>
             <li>{PLAN_LIMITS.free.generationsPerMonth} AI generations/month</li>
             <li>Private, workspace, and public sharing</li>
           </ul>

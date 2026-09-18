@@ -103,20 +103,21 @@ Claude-generated schemas can use the full variety, not just the original six.
 
 Free vs Pro is defined in one place, `src/lib/plans.ts`:
 
-| | Free | Pro ($9/month) |
+| | Free | Pro ($9.99/month) |
 |---|---|---|
-| Tools | 3 | Unlimited |
+| Tools | 1 | Unlimited |
 | AI generations | 5/month | 100/month |
 
 Tool limits are enforced in Postgres (migration 0012's `enforce_tool_limit`
-trigger — holds regardless of which client creates a tool). AI generation
+trigger, tightened to 1 free tool by migration 0013 — holds regardless of
+which client creates a tool). AI generation
 limits are enforced in `/api/generate-schema` two ways: a flat 10/hour abuse
 guard for everyone, and the real plan-based monthly quota above.
 
 **Setup** (needs your own Stripe account — sign up at
 [stripe.com](https://stripe.com)):
 
-1. **Create a Product + Price** for Pro ($9/month, recurring) in the Stripe
+1. **Create a Product + Price** for Pro ($9.99/month, recurring) in the Stripe
    Dashboard → Product catalog. Copy the **Price ID** (`price_...`) into
    `STRIPE_PRO_PRICE_ID`.
 2. **Get your secret key** — Developers → API keys → copy the **Secret key**

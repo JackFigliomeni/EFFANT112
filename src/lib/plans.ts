@@ -5,13 +5,13 @@
 // enforce_tool_limit trigger) since that check needs to run at insert time
 // regardless of which client creates the tool.
 export const PLAN_LIMITS = {
-  free: { tools: 3, generationsPerMonth: 5 },
+  free: { tools: 1, generationsPerMonth: 5 },
   pro: { tools: Infinity, generationsPerMonth: 100 },
 } as const;
 
 export type Plan = keyof typeof PLAN_LIMITS;
 
-export const PRO_PRICE_DISPLAY = "$9/month";
+export const PRO_PRICE_DISPLAY = "$9.99/month";
 
 export function isPlan(value: unknown): value is Plan {
   return value === "free" || value === "pro";
