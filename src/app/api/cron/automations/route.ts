@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { AutomationBlock, TableBlock, ToolSchema } from "@/lib/schema";
+import type { AutomationBlock, InputBlock, TableBlock, ToolSchema } from "@/lib/schema";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,10 +26,29 @@ async function generateRecord(
   client: Anthropic,
   automation: AutomationBlock,
   table: TableBlock | undefined,
+  inputsById: Map<string, InputBlock>,
   recentRecords: Record<string, unknown>[],
 ): Promise<Record<string, unknown>> {
   const fields = table?.fields ?? [];
-  const system = `You are filling in exactly one new record for a table with these fields: ${fields.join(", ")}.
+  // A table field usually matches an input block of the same id — when it
+  // does, tell Claude that field's exact constraints (a select/multiselect's
+  // fixed options in particular), otherwise it'll happily invent a value
+  // outside the dropdown's actual choices.
+  const fieldNotes = fields
+    .map((field) => {
+      const input = inputsById.get(field);
+      if (!input) return field;
+      if ((input.kind === "select" || input.kind === "multiselect") && input.options) {
+        return `${field} (must be ${input.kind === "multiselect" ? "one or more of" : "exactly one of"}: ${input.options.join(", ")})`;
+      }
+      if (input.kind === "boolean") return `${field} (true/false)`;
+      if (input.kind === "rating") return `${field} (1-5)`;
+      if (input.kind === "number") return `${field} (a number)`;
+      return field;
+    })
+    .join("; ");
+
+  const system = `You are filling in exactly one new record for a table with these fields: ${fieldNotes}.
 Given the instruction below, respond with ONLY a single JSON object whose keys are exactly those fields (no extra keys, no missing keys). Use null for any field a person should fill in themselves rather than you (e.g. a rating, or whether they actually did something). Never wrap the JSON in prose or code fences.`;
 
   const recentNote =
@@ -93,6 +112,9 @@ export async function GET(request: Request) {
     const automations = schema.blocks.filter((b): b is AutomationBlock => b.type === "automation");
     if (automations.length === 0) continue;
     const tables = schema.blocks.filter((b): b is TableBlock => b.type === "table");
+    const inputsById = new Map(
+      schema.blocks.filter((b): b is InputBlock => b.type === "input").map((b) => [b.id, b]),
+    );
 
     for (const automation of automations) {
       try {
@@ -108,6 +130,7 @@ export async function GET(request: Request) {
           client,
           automation,
           table,
+          inputsById,
           (recent ?? []).map((r) => r.data as Record<string, unknown>),
         );
         const { error: insertError } = await admin
