@@ -1,8 +1,34 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { validateToolSchema } from "@/lib/schema";
 import { ToolRenderer } from "@/components/renderer/ToolRenderer";
 import { ReportButton } from "@/components/ReportButton";
+import { ToolServiceWorker } from "@/components/ToolServiceWorker";
+
+/**
+ * Makes a tool "Add to Home Screen"-installable as its own standalone app —
+ * own icon, own name, no browser chrome — via a per-tool manifest (see
+ * src/app/api/tools/[id]/manifest/route.ts) rather than one static manifest
+ * for the whole site.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: tool } = await supabase.from("tools").select("name").eq("id", id).maybeSingle();
+  const name = tool?.name ?? "Tool";
+
+  return {
+    title: name,
+    manifest: `/api/tools/${id}/manifest`,
+    appleWebApp: { capable: true, title: name, statusBarStyle: "default" },
+    icons: { apple: `/api/tool-icon/${id}?size=192` },
+  };
+}
 
 export default async function ToolPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -39,6 +65,7 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 p-6">
+      <ToolServiceWorker />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{tool.name}</h1>
         {user?.id === tool.owner_id && (
