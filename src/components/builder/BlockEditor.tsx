@@ -198,6 +198,40 @@ export function BlockEditor({
           </label>
         </>
       )}
+
+      {block.type === "automation" && (
+        <>
+          <label className="flex flex-col gap-1 text-xs">
+            Target table id
+            <input
+              className={fieldClass}
+              value={block.target}
+              onChange={(e) => onChange({ ...block, target: e.target.value })}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            Prompt (what Claude should generate each run)
+            <textarea
+              className={fieldClass}
+              rows={3}
+              value={block.prompt}
+              onChange={(e) => onChange({ ...block, prompt: e.target.value })}
+            />
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={block.useWebSearch}
+              onChange={(e) => onChange({ ...block, useWebSearch: e.target.checked })}
+            />
+            Use real web search (e.g. to find an actual article/recipe link)
+          </label>
+          <p className="text-xs text-black/40 dark:text-white/40">
+            Runs once a day for every tool that has this block, inserting one new record into the
+            target table — no button, no manual trigger.
+          </p>
+        </>
+      )}
     </div>
   );
 }

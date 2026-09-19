@@ -10,6 +10,7 @@ export const BLOCK_TYPES = [
   "view",
   "action",
   "rule",
+  "automation",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -91,6 +92,19 @@ const ruleBlockSchema = z.object({
   then: z.string().min(1),
 });
 
+// Unlike `rule` (a passive, unenforced note), `automation` actually runs —
+// once a day, the cron route (src/app/api/cron/automations/route.ts) calls
+// Claude with `prompt` and inserts the result as a new record into `target`.
+const automationBlockSchema = z.object({
+  type: z.literal("automation"),
+  id: z.string().min(1),
+  target: z.string().min(1),
+  prompt: z.string().min(1),
+  // Lets Claude use real web search (e.g. to find an actual recipe/article
+  // URL) instead of only generating from what it already knows.
+  useWebSearch: z.boolean(),
+});
+
 export const blockSchema = z
   .discriminatedUnion("type", [
     inputBlockSchema,
@@ -98,6 +112,7 @@ export const blockSchema = z
     viewBlockSchema,
     actionBlockSchema,
     ruleBlockSchema,
+    automationBlockSchema,
   ])
   .superRefine((block, ctx) => {
     if (block.type === "input" && INPUT_KINDS_NEEDING_OPTIONS.includes(block.kind as "select" | "multiselect")) {
@@ -132,6 +147,7 @@ export type TableBlock = z.infer<typeof tableBlockSchema>;
 export type ViewBlock = z.infer<typeof viewBlockSchema>;
 export type ActionBlock = z.infer<typeof actionBlockSchema>;
 export type RuleBlock = z.infer<typeof ruleBlockSchema>;
+export type AutomationBlock = z.infer<typeof automationBlockSchema>;
 export type Block = z.infer<typeof blockSchema>;
 
 export const toolSchemaSchema = z.object({
@@ -165,5 +181,7 @@ export function emptyBlock(type: BlockType, id: string): Block {
       return { type, id, does: "add_record", target: "" };
     case "rule":
       return { type, id, when: "", then: "" };
+    case "automation":
+      return { type, id, target: "", prompt: "", useWebSearch: false };
   }
 }

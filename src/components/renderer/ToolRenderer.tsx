@@ -188,6 +188,18 @@ export function ToolRenderer({ schema, toolId }: { schema: ToolSchema; toolId: s
                 Rule (not yet enforced): when <em>{block.when}</em>, then <em>{block.then}</em>.
               </p>
             );
+
+          case "automation":
+            // Actually runs — see src/app/api/cron/automations/route.ts,
+            // triggered once a day by Vercel Cron. Nothing to render here
+            // beyond a note; the new record just shows up in whichever view
+            // reads from `target`.
+            return (
+              <p key={block.id} className="text-xs text-black/50 dark:text-white/50">
+                Automation: runs daily, adds a new record to <em>{block.target}</em> generated from
+                &ldquo;{block.prompt}&rdquo;{block.useWebSearch ? " (with web search)" : ""}.
+              </p>
+            );
         }
       })}
     </div>
