@@ -14,6 +14,12 @@ export const BLOCK_TYPES = [
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
+// A tool's visibility — a column on the `tools` table, not part of its
+// block schema, but shared here since the builder, /publish, and community
+// pages all need the same three values.
+export const VISIBILITIES = ["private", "workspace", "public"] as const;
+export type Visibility = (typeof VISIBILITIES)[number];
+
 export const INPUT_KINDS = [
   "text",
   "textarea",

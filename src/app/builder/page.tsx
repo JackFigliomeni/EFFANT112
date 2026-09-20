@@ -34,6 +34,8 @@ function BuilderPageInner() {
   const [name, setName] = useState("Untitled tool");
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [visibility, setVisibility] = useState<"private" | "workspace" | "public">("private");
+  const [themeColor, setThemeColor] = useState("#171717");
+  const [tab, setTab] = useState<"blocks" | "design">("blocks");
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -79,7 +81,7 @@ function BuilderPageInner() {
         try {
           const { data, error } = await supabase
             .from("tools")
-            .select("id, name, schema, visibility")
+            .select("id, name, schema, visibility, theme_color")
             .eq("id", editingId)
             .single();
           if (error) {
@@ -89,6 +91,7 @@ function BuilderPageInner() {
           setName(data.name);
           setBlocks((data.schema as ToolSchema).blocks);
           setVisibility(data.visibility);
+          setThemeColor(data.theme_color ?? "#171717");
         } catch (err) {
           setStatus(err instanceof Error ? `Couldn't load tool: ${err.message}` : "Couldn't load tool.");
         }
@@ -148,7 +151,7 @@ function BuilderPageInner() {
         // this would report "Saved." even though nothing changed.
         const { data, error } = await supabase
           .from("tools")
-          .update({ name, schema, visibility })
+          .update({ name, schema, visibility, theme_color: themeColor })
           .eq("id", toolId)
           .select("id")
           .single();
@@ -168,6 +171,7 @@ function BuilderPageInner() {
             name,
             schema,
             visibility,
+            theme_color: themeColor,
             owner_id: owner?.userId ?? null,
             workspace_id: owner?.workspaceId ?? null,
           })
@@ -229,6 +233,57 @@ function BuilderPageInner() {
           />
         </label>
 
+        <div className="flex w-fit rounded-full border border-black/15 p-0.5 text-sm dark:border-white/20">
+          {(["blocks", "design"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`rounded-full px-3 py-1 capitalize transition ${
+                tab === t
+                  ? "bg-black text-white dark:bg-white dark:text-black"
+                  : "text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {tab === "design" && (
+          <div className="flex flex-col gap-2 text-sm">
+            <span>Accent color</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {["#171717", "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"].map(
+                (c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    aria-label={c}
+                    onClick={() => setThemeColor(c)}
+                    className={`h-8 w-8 rounded-full transition ${
+                      themeColor === c ? "ring-2 ring-offset-2 ring-black dark:ring-white dark:ring-offset-black" : ""
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ),
+              )}
+              <input
+                type="color"
+                value={themeColor}
+                onChange={(e) => setThemeColor(e.target.value)}
+                className="h-8 w-8 cursor-pointer rounded-full border-0 bg-transparent p-0"
+                aria-label="Custom accent color"
+              />
+            </div>
+            <p className="text-xs text-black/40 dark:text-white/40">
+              Used for this tool&rsquo;s buttons, marked calendar days, and chart bars — plus its
+              generated home-screen icon if installed.
+            </p>
+          </div>
+        )}
+
+        {tab === "blocks" && (
+        <>
         <fieldset className="flex flex-col gap-1 text-sm">
           <legend className="mb-1">Visibility</legend>
           <div className="flex gap-4">
@@ -282,6 +337,8 @@ function BuilderPageInner() {
             </button>
           ))}
         </div>
+        </>
+        )}
 
         <div className="flex items-center gap-3">
           <button
@@ -339,7 +396,7 @@ function BuilderPageInner() {
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-black/60 dark:text-white/60">Live preview</h2>
         {previewValid && toolId ? (
-          <ToolRenderer schema={previewSchema} toolId={toolId} />
+          <ToolRenderer schema={previewSchema} toolId={toolId} themeColor={themeColor} />
         ) : (
           <p className="rounded-lg border border-dashed border-black/15 p-4 text-sm text-black/50 dark:border-white/20 dark:text-white/50">
             {blocks.length === 0

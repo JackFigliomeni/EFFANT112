@@ -40,7 +40,7 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
 
   const { data: tool, error } = await supabase
     .from("tools")
-    .select("id, name, schema, owner_id, visibility")
+    .select("id, name, schema, owner_id, visibility, theme_color")
     .eq("id", id)
     .single();
 
@@ -74,7 +74,7 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
           </Link>
         )}
       </div>
-      <ToolRenderer schema={validation.schema} toolId={tool.id} />
+      <ToolRenderer schema={validation.schema} toolId={tool.id} themeColor={tool.theme_color} />
       {tool.visibility === "public" && user?.id !== tool.owner_id && (
         <ReportButton toolId={tool.id} />
       )}

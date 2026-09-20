@@ -15,7 +15,17 @@ type Row = { id: string; data: Record<string, unknown>; created_at: string };
  * (or edit/delete an existing record) to Supabase, and views read straight
  * back out of it.
  */
-export function ToolRenderer({ schema, toolId }: { schema: ToolSchema; toolId: string }) {
+export function ToolRenderer({
+  schema,
+  toolId,
+  themeColor,
+}: {
+  schema: ToolSchema;
+  toolId: string;
+  // Set in the Builder's Design tab (tools.theme_color) — the tool's own
+  // accent, so an installed tool doesn't just inherit the site's black/white.
+  themeColor?: string;
+}) {
   const supabase = createClient();
   const [draft, setDraft] = useState<Record<string, unknown>>({});
   const [rowsByTable, setRowsByTable] = useState<Record<string, Row[]>>({});
@@ -162,6 +172,7 @@ export function ToolRenderer({ schema, toolId }: { schema: ToolSchema; toolId: s
                     : undefined
                 }
                 toggleField={updateAction?.field}
+                themeColor={themeColor}
               />
             );
           }
@@ -174,7 +185,8 @@ export function ToolRenderer({ schema, toolId }: { schema: ToolSchema; toolId: s
               <button
                 key={block.id}
                 onClick={() => handleAddRecord(block.target)}
-                className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+                className="w-fit rounded-md px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                style={{ backgroundColor: themeColor ?? "#171717" }}
               >
                 {block.label ?? "add record"}
               </button>

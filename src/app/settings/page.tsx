@@ -81,13 +81,13 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-8 p-6">
+    <div className="mx-auto flex max-w-lg flex-col gap-10 px-6 py-16">
       <div>
-        <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">{email}</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
+        <p className="mt-1 text-sm text-black/60 dark:text-white/60">{email}</p>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10">
+      <div className="flex flex-col gap-3 rounded-2xl border border-black/10 p-5 dark:border-white/10">
         <h2 className="text-sm font-semibold">Billing</h2>
         <p className="text-sm text-black/70 dark:text-white/70">
           Current plan: <strong>{plan === "pro" ? `Pro (${PRO_PRICE_DISPLAY})` : "Free"}</strong>
@@ -97,7 +97,7 @@ export default function SettingsPage() {
             <button
               onClick={openBillingPortal}
               disabled={loadingPortal}
-              className="w-fit rounded-md border border-black/15 px-3 py-1.5 text-sm hover:bg-black/5 disabled:opacity-50 dark:border-white/20 dark:hover:bg-white/10"
+              className="w-fit rounded-full border border-black/15 px-4 py-2 text-sm transition hover:bg-black/5 disabled:opacity-50 dark:border-white/20 dark:hover:bg-white/10"
             >
               {loadingPortal ? "Opening…" : "Manage billing / cancel subscription"}
             </button>
@@ -116,7 +116,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-lg border border-red-600/30 p-4">
+      <div className="flex flex-col gap-3 rounded-2xl border border-red-600/30 p-5">
         <h2 className="text-sm font-semibold text-red-600">Delete account</h2>
         <p className="text-sm text-black/70 dark:text-white/70">
           Permanently deletes your account, every tool you own, and all their data. If you have an
@@ -134,7 +134,7 @@ export default function SettingsPage() {
             <button
               onClick={deleteAccount}
               disabled={deleting}
-              className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              className="rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
             >
               {deleting ? "Deleting…" : "Yes, permanently delete everything"}
             </button>

@@ -54,12 +54,16 @@ export function ViewBlockRenderer({
   onDelete,
   onToggle,
   toggleField,
+  themeColor,
 }: {
   block: ViewBlock;
   rows: Row[];
   onDelete?: (id: string) => void;
   onToggle?: (id: string) => void;
   toggleField?: string;
+  // Picked in the Builder's Design tab (tools.theme_color) — falls back to
+  // the emerald default below when a tool predates that column.
+  themeColor?: string;
 }) {
   if (block.display === "count") {
     return (
@@ -136,7 +140,7 @@ export function ViewBlockRenderer({
                   y={height - barHeight}
                   width={barWidth}
                   height={barHeight}
-                  className="fill-emerald-500"
+                  fill={themeColor ?? "#10b981"}
                 />
               );
             })}
@@ -186,8 +190,9 @@ export function ViewBlockRenderer({
               <div
                 key={i}
                 className={`aspect-square rounded flex items-center justify-center ${
-                  marked ? "bg-emerald-500 text-white" : "bg-black/5 dark:bg-white/10"
+                  marked ? "text-white" : "bg-black/5 dark:bg-white/10"
                 }`}
+                style={marked ? { backgroundColor: themeColor ?? "#10b981" } : undefined}
               >
                 {day}
               </div>

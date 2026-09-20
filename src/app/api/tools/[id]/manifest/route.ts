@@ -12,8 +12,9 @@ export const runtime = "nodejs";
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const admin = createAdminClient();
-  const { data: tool } = await admin.from("tools").select("name").eq("id", id).maybeSingle();
+  const { data: tool } = await admin.from("tools").select("name, theme_color").eq("id", id).maybeSingle();
   const name = tool?.name ?? "Tool";
+  const themeColor = tool?.theme_color ?? "#171717";
 
   const manifest = {
     name,
@@ -21,8 +22,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     start_url: `/tools/${id}`,
     scope: `/tools/${id}`,
     display: "standalone",
-    background_color: "#000000",
-    theme_color: "#000000",
+    background_color: themeColor,
+    theme_color: themeColor,
     icons: [
       { src: `/api/tool-icon/${id}?size=192`, sizes: "192x192", type: "image/png" },
       { src: `/api/tool-icon/${id}?size=512`, sizes: "512x512", type: "image/png" },

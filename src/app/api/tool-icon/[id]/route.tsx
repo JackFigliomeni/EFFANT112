@@ -32,8 +32,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const size = Number(new URL(request.url).searchParams.get("size")) || 512;
 
   const admin = createAdminClient();
-  const { data: tool } = await admin.from("tools").select("name").eq("id", id).maybeSingle();
+  const { data: tool } = await admin.from("tools").select("name, theme_color").eq("id", id).maybeSingle();
   const name = tool?.name ?? "Tool";
+  // "#171717" is the column's default (unset) — fall back to the varied
+  // by-id palette so un-customized tools don't all end up the same near-black.
+  const background =
+    tool?.theme_color && tool.theme_color !== "#171717" ? tool.theme_color : colorForId(id);
 
   return new ImageResponse(
     (
@@ -44,7 +48,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: colorForId(id),
+          background,
           color: "white",
           fontSize: size * 0.4,
           fontWeight: 700,
