@@ -6,8 +6,6 @@ export default function TermsPage() {
       <h1 className="text-xl font-semibold">Terms of Service</h1>
       <p className="text-black/60 dark:text-white/60">
         Last updated {new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}.
-        This is a plain-language draft, not reviewed by a lawyer — have one look it over before
-        you rely on it for a real launch.
       </p>
 
       <h2 className="font-semibold">What this is</h2>
@@ -39,7 +37,28 @@ export default function TermsPage() {
         Tools marked &ldquo;Public&rdquo; are created by users, not by us. We don&rsquo;t review
         public tools before they&rsquo;re listed on the Community page and aren&rsquo;t
         responsible for their content — but you can report anything concerning to us at the
-        contact below.
+        contact below, or flag it directly from the tool&rsquo;s page.
+      </p>
+
+      <h2 className="font-semibold">Copyright complaints</h2>
+      <p>
+        If content published on this site infringes your copyright, email{" "}
+        <a href="mailto:contact@effant.tech" className="underline">
+          contact@effant.tech
+        </a>{" "}
+        with (1) a description of the copyrighted work, (2) the URL of the infringing tool, (3)
+        your contact information, and (4) a statement that you have a good-faith belief the use
+        isn&rsquo;t authorized. We&rsquo;ll investigate and remove infringing content we confirm.
+      </p>
+
+      <h2 className="font-semibold">Cancellation</h2>
+      <p>
+        Cancel a Pro subscription any time from{" "}
+        <a href="/settings" className="underline">
+          Settings
+        </a>{" "}
+        — it stays active through the end of the period you&rsquo;ve already paid for, then
+        doesn&rsquo;t renew. No cancellation fee, no need to contact us.
       </p>
 
       <h2 className="font-semibold">Changes</h2>
@@ -49,7 +68,13 @@ export default function TermsPage() {
       </p>
 
       <h2 className="font-semibold">Contact</h2>
-      <p>Questions, or want to report content? Reach out at [add a contact email here].</p>
+      <p>
+        Questions, or want to report content? Reach out at{" "}
+        <a href="mailto:contact@effant.tech" className="underline">
+          contact@effant.tech
+        </a>
+        .
+      </p>
     </div>
   );
 }

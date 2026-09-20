@@ -6,8 +6,6 @@ export default function PrivacyPage() {
       <h1 className="text-xl font-semibold">Privacy Policy</h1>
       <p className="text-black/60 dark:text-white/60">
         Last updated {new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}.
-        This is a plain-language draft, not reviewed by a lawyer — have one look it over before
-        you rely on it for a real launch.
       </p>
 
       <h2 className="font-semibold">What we collect</h2>
@@ -37,13 +35,23 @@ export default function PrivacyPage() {
 
       <h2 className="font-semibold">Your rights</h2>
       <p>
-        You can delete any tool you own at any time. To delete your account entirely, or request
-        a copy of your data, contact us at the address below — we&rsquo;ll act on it within a
-        reasonable time.
+        You can delete any tool you own at any time, and delete your entire account (and
+        everything in it) yourself from{" "}
+        <a href="/settings" className="underline">
+          Settings
+        </a>
+        . To request a copy of your data instead, contact us at the address below — we&rsquo;ll
+        act on it within a reasonable time.
       </p>
 
       <h2 className="font-semibold">Contact</h2>
-      <p>Questions about this policy? Reach out at [add a contact email here].</p>
+      <p>
+        Questions about this policy? Reach out at{" "}
+        <a href="mailto:contact@effant.tech" className="underline">
+          contact@effant.tech
+        </a>
+        .
+      </p>
     </div>
   );
 }

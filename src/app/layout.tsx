@@ -26,6 +26,7 @@ const NAV_LINKS = [
   { href: "/generate", label: "Generate" },
   { href: "/builder", label: "Builder" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/settings", label: "Settings" },
   { href: "/tools/demo", label: "Phase 1 demo" },
 ];
 
