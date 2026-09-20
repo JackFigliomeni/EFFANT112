@@ -25,14 +25,14 @@ export function ReportButton({ toolId }: { toolId: string }) {
   }
 
   if (status === "sent") {
-    return <p className="text-xs text-black/50 dark:text-white/50">Reported — thanks for flagging it.</p>;
+    return <p className="text-xs text-muted-foreground">Reported — thanks for flagging it.</p>;
   }
 
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-fit text-xs text-black/40 underline hover:text-black/60 dark:text-white/40 dark:hover:text-white/60"
+        className="w-fit text-xs text-muted-foreground underline hover:text-foreground"
       >
         Report this tool
       </button>
@@ -40,27 +40,27 @@ export function ReportButton({ toolId }: { toolId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-black/10 p-3 dark:border-white/10">
+    <div className="flex flex-col gap-2 rounded-md border border-border p-3">
       <textarea
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         placeholder="What's wrong with this tool?"
         rows={2}
-        className="rounded-md border border-black/15 px-2 py-1 text-sm dark:border-white/20 dark:bg-transparent"
+        className="rounded-md border border-border px-2 py-1 text-sm "
       />
       <div className="flex items-center gap-2">
         <button
           onClick={submit}
           disabled={status === "sending" || reason.trim().length === 0}
-          className="w-fit rounded-md bg-black px-3 py-1 text-xs font-medium text-white hover:bg-black/80 disabled:opacity-50 dark:bg-white dark:text-black"
+          className="w-fit rounded-md bg-black px-3 py-1 text-xs font-medium text-white hover:bg-black/80 disabled:opacity-50"
         >
           {status === "sending" ? "Sending…" : "Submit report"}
         </button>
-        <button onClick={() => setOpen(false)} className="text-xs text-black/40 dark:text-white/40">
+        <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground">
           Cancel
         </button>
       </div>
-      {status === "error" && <p className="text-xs text-red-600">Couldn&rsquo;t send — try again.</p>}
+      {status === "error" && <p className="text-xs text-destructive">Couldn&rsquo;t send — try again.</p>}
     </div>
   );
 }

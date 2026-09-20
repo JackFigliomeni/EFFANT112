@@ -11,3 +11,9 @@ export function isMissingColumn(error: { code?: string; message?: string } | nul
 }
 
 export const DEFAULT_THEME_COLOR = "#171717";
+
+/** "#171717" is the column default, meaning the owner never picked an accent —
+ * renderers should then use the design's own defaults, not literal near-black. */
+export function accentOf(color: string | null | undefined): string | undefined {
+  return color && color.toLowerCase() !== DEFAULT_THEME_COLOR ? color : undefined;
+}

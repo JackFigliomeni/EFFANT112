@@ -20,7 +20,7 @@ export function DismissReportButton({ reportId }: { reportId: string }) {
     <button
       onClick={dismiss}
       disabled={busy}
-      className="text-xs text-black/40 underline hover:text-black disabled:opacity-50 dark:text-white/40 dark:hover:text-white"
+      className="text-xs text-black/40 underline hover:text-black disabled:opacity-50"
     >
       {busy ? "…" : "Dismiss"}
     </button>

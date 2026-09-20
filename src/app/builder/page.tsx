@@ -6,24 +6,32 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import {
   BLOCK_TYPES,
+  VISIBILITIES,
   emptyBlock,
   validateToolSchema,
   type Block,
   type BlockType,
   type ToolSchema,
+  type Visibility,
 } from "@/lib/schema";
 import { BlockEditor } from "@/components/builder/BlockEditor";
 import { ToolRenderer } from "@/components/renderer/ToolRenderer";
+import { AccentPicker } from "@/components/AccentPicker";
+import { ShareMenu } from "@/components/ShareMenu";
+import { Button } from "@/components/ui/button";
+import { BUILDER_PREFILL_KEY } from "@/lib/builderPrefill";
 import { isPlan, type Plan } from "@/lib/plans";
-import { isMissingColumn } from "@/lib/toolColumns";
-
-/** sessionStorage key Phase 3's prompt-to-schema page uses to hand off a
- * freshly generated schema for editing here. */
-export const BUILDER_PREFILL_KEY = "effant:builder-prefill";
+import { DEFAULT_THEME_COLOR, accentOf, isMissingColumn } from "@/lib/toolColumns";
 
 // Depends on runtime env vars and a user's own session — never prerender it
 // statically at build time.
 export const dynamic = "force-dynamic";
+
+const VISIBILITY_HINT: Record<Visibility, string> = {
+  private: "Only you.",
+  workspace: "Everyone in your workspace.",
+  public: "Anyone with the link, and listed on Community.",
+};
 
 function BuilderPageInner() {
   const supabase = createClient();
@@ -33,21 +41,20 @@ function BuilderPageInner() {
 
   const [toolId, setToolId] = useState<string | null>(editingId);
   const [name, setName] = useState("Untitled tool");
+  const [description, setDescription] = useState("");
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [visibility, setVisibility] = useState<"private" | "workspace" | "public">("private");
-  const [themeColor, setThemeColor] = useState("#171717");
-  const [tab, setTab] = useState<"blocks" | "design">("blocks");
+  const [selected, setSelected] = useState<number | null>(null);
+  const [visibility, setVisibility] = useState<Visibility>("private");
+  const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
+  const [tab, setTab] = useState<"preview" | "design">("preview");
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // Phase 4 tagging: who's creating this tool and which workspace it belongs
-  // to, so every insert gets tagged automatically. Both stay null pre-auth.
-  // `plan` is used only to show the right automation test-run copy/limits
-  // in the automation block editor below.
-  const [owner, setOwner] = useState<{ userId: string; workspaceId: string | null; plan: Plan } | null>(
-    null,
-  );
+  // Who's creating this tool and which workspace it belongs to, so every
+  // insert gets tagged automatically. `plan` only drives the automation
+  // test-run copy in the part editor.
+  const [owner, setOwner] = useState<{ userId: string; workspaceId: string | null; plan: Plan } | null>(null);
 
   useEffect(() => {
     async function loadOwner() {
@@ -67,39 +74,43 @@ function BuilderPageInner() {
           plan: isPlan(profile?.plan) ? profile.plan : "free",
         });
       } catch {
-        // Not signed in / can't reach Supabase yet — fine, owner just stays
-        // null and the tool saves without an owner (see 0001_create_tools.sql).
+        // Not signed in / can't reach Supabase yet — owner stays null and the
+        // tool saves without an owner (see 0001_create_tools.sql).
       }
     }
     loadOwner();
   }, [supabase]);
 
-  // Load: either an existing tool (edit mode), a Phase 3 prefill handed off
-  // via sessionStorage, or a blank slate.
+  // Load: an existing tool (edit mode), a tool handed over by the Generator,
+  // or a blank slate.
   useEffect(() => {
     async function load() {
       if (editingId) {
         try {
-          let { data, error } = await supabase
+          let result = await supabase
             .from("tools")
-            .select("id, name, schema, visibility, theme_color")
+            .select("id, name, schema, visibility, theme_color, description")
             .eq("id", editingId)
             .single();
-          if (isMissingColumn(error)) {
-            ({ data, error } = await supabase
+          if (isMissingColumn(result.error)) {
+            result = (await supabase
               .from("tools")
               .select("id, name, schema, visibility")
               .eq("id", editingId)
-              .single());
+              .single()) as typeof result;
           }
+          const { data, error } = result;
           if (error || !data) {
             setStatus(`Couldn't load tool: ${error?.message ?? "not found"}`);
             return;
           }
           setName(data.name);
-          setBlocks((data.schema as ToolSchema).blocks);
+          const loaded = (data.schema as ToolSchema).blocks;
+          setBlocks(loaded);
+          setSelected(loaded.length > 0 ? 0 : null);
           setVisibility(data.visibility);
-          setThemeColor(data.theme_color ?? "#171717");
+          setThemeColor(data.theme_color ?? DEFAULT_THEME_COLOR);
+          setDescription(data.description ?? "");
         } catch (err) {
           setStatus(err instanceof Error ? `Couldn't load tool: ${err.message}` : "Couldn't load tool.");
         }
@@ -115,10 +126,11 @@ function BuilderPageInner() {
           if (result.ok) {
             setName(prefill.name ?? "Generated tool");
             setBlocks(result.schema.blocks);
-            return;
+            setSelected(0);
+            if (typeof prefill.themeColor === "string") setThemeColor(prefill.themeColor);
           }
         } catch {
-          // fall through to blank slate
+          // fall through to a blank slate
         }
       }
     }
@@ -130,6 +142,7 @@ function BuilderPageInner() {
   function addBlock(type: BlockType) {
     const id = `${type}_${blocks.filter((b) => b.type === type).length + 1}`;
     setBlocks((prev) => [...prev, emptyBlock(type, id)]);
+    setSelected(blocks.length);
   }
 
   function updateBlock(index: number, next: Block) {
@@ -138,6 +151,7 @@ function BuilderPageInner() {
 
   function removeBlock(index: number) {
     setBlocks((prev) => prev.filter((_, i) => i !== index));
+    setSelected((cur) => (cur === null ? null : cur >= index ? Math.max(0, cur - 1) : cur));
   }
 
   async function save() {
@@ -151,26 +165,22 @@ function BuilderPageInner() {
       return;
     }
 
+    const core = { name, schema, visibility };
+    const extras = { theme_color: themeColor, description };
+    const NEEDS_MIGRATION = " Color and description will save once migrations 0015 and 0016 are applied.";
+
     try {
       if (toolId) {
-        // .select().single() matters here: an update that matches zero rows
-        // (e.g. RLS silently blocking a non-owner's edit of a public tool)
-        // otherwise returns no error and no data — without checking `data`,
-        // this would report "Saved." even though nothing changed.
-        let { data, error } = await supabase
-          .from("tools")
-          .update({ name, schema, visibility, theme_color: themeColor })
-          .eq("id", toolId)
-          .select("id")
-          .single();
-        if (isMissingColumn(error)) {
-          ({ data, error } = await supabase
-            .from("tools")
-            .update({ name, schema, visibility })
-            .eq("id", toolId)
-            .select("id")
-            .single());
+        // .select().single() matters: an update that matches zero rows (e.g.
+        // RLS silently blocking a non-owner) otherwise returns no error and no
+        // data — without checking `data` this would report "Saved." for nothing.
+        let result = await supabase.from("tools").update({ ...core, ...extras }).eq("id", toolId).select("id").single();
+        let degraded = false;
+        if (isMissingColumn(result.error)) {
+          degraded = true;
+          result = (await supabase.from("tools").update(core).eq("id", toolId).select("id").single()) as typeof result;
         }
+        const { data, error } = result;
         if (error || !data) {
           setStatus(
             error?.code === "PGRST116"
@@ -178,28 +188,21 @@ function BuilderPageInner() {
               : `Save failed: ${error?.message ?? "unknown error"}`,
           );
         } else {
-          setStatus("Saved.");
+          setStatus(degraded ? `Saved.${NEEDS_MIGRATION}` : "Saved.");
         }
       } else {
-        const base = {
-          name,
-          schema,
-          visibility,
-          owner_id: owner?.userId ?? null,
-          workspace_id: owner?.workspaceId ?? null,
-        };
-        let { data, error } = await supabase
-          .from("tools")
-          .insert({ ...base, theme_color: themeColor })
-          .select("id")
-          .single();
-        if (isMissingColumn(error)) {
-          ({ data, error } = await supabase.from("tools").insert(base).select("id").single());
+        const base = { ...core, owner_id: owner?.userId ?? null, workspace_id: owner?.workspaceId ?? null };
+        let result = await supabase.from("tools").insert({ ...base, ...extras }).select("id").single();
+        let degraded = false;
+        if (isMissingColumn(result.error)) {
+          degraded = true;
+          result = (await supabase.from("tools").insert(base).select("id").single()) as typeof result;
         }
+        const { data, error } = result;
         if (error || !data) {
           setStatus(`Save failed: ${error?.message ?? "unknown error"}`);
         } else {
-          setStatus("Created.");
+          setStatus(degraded ? `Created.${NEEDS_MIGRATION}` : "Created.");
           setToolId(data.id);
           router.replace(`/builder?id=${data.id}`);
         }
@@ -232,199 +235,197 @@ function BuilderPageInner() {
 
   const previewSchema: ToolSchema = { blocks };
   const previewValid = blocks.length > 0 && validateToolSchema(previewSchema).ok;
+  const selectedBlock = selected !== null ? blocks[selected] : undefined;
 
   return (
-    <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 p-6 md:grid-cols-2">
-      <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Builder</h1>
-          <p className="text-sm text-black/60 dark:text-white/60">
-            Add/edit/remove blocks by hand — no prompting needed.
-          </p>
-        </div>
+    <section className="workspace builder-workspace">
+      {/* left: the tool's name and its parts */}
+      <aside className="workspace-rail">
+        <span className="font-mono text-[9px] uppercase text-muted-foreground">Builder space</span>
+        <input
+          className="mt-4 w-full border-b border-border bg-transparent pb-2 text-lg font-semibold outline-none focus:border-foreground"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-label="Tool name"
+        />
+        <p className="mt-3 text-xs text-muted-foreground">
+          {blocks.length} {blocks.length === 1 ? "part" : "parts"}
+        </p>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Tool name
-          <input
-            className="rounded-md border border-black/15 px-3 py-2 dark:border-white/20 dark:bg-transparent"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-
-        <div className="flex w-fit rounded-full border border-black/15 p-0.5 text-sm dark:border-white/20">
-          {(["blocks", "design"] as const).map((t) => (
+        <div className="mt-8 space-y-2">
+          {blocks.map((block, i) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`rounded-full px-3 py-1 capitalize transition ${
-                tab === t
-                  ? "bg-black text-white dark:bg-white dark:text-black"
-                  : "text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white"
-              }`}
+              key={i}
+              onClick={() => setSelected(i)}
+              className={`part-tab animate-fitted-part ${selected === i ? "is-selected" : ""}`}
             >
-              {t}
+              <span className="truncate font-medium">{block.id || "untitled"}</span>
+              <span className="font-mono text-[9px] uppercase text-muted-foreground">{block.type}</span>
             </button>
           ))}
         </div>
 
-        {tab === "design" && (
-          <div className="flex flex-col gap-2 text-sm">
-            <span>Accent color</span>
-            <div className="flex flex-wrap items-center gap-2">
-              {["#171717", "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"].map(
-                (c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    aria-label={c}
-                    onClick={() => setThemeColor(c)}
-                    className={`h-8 w-8 rounded-full transition ${
-                      themeColor === c ? "ring-2 ring-offset-2 ring-black dark:ring-white dark:ring-offset-black" : ""
-                    }`}
-                    style={{ backgroundColor: c }}
-                  />
-                ),
-              )}
-              <input
-                type="color"
-                value={themeColor}
-                onChange={(e) => setThemeColor(e.target.value)}
-                className="h-8 w-8 cursor-pointer rounded-full border-0 bg-transparent p-0"
-                aria-label="Custom accent color"
-              />
-            </div>
-            <p className="text-xs text-black/40 dark:text-white/40">
-              Used for this tool&rsquo;s buttons, marked calendar days, and chart bars — plus its
-              generated home-screen icon if installed.
-            </p>
-          </div>
-        )}
-
-        {tab === "blocks" && (
-        <>
-        <fieldset className="flex flex-col gap-1 text-sm">
-          <legend className="mb-1">Visibility</legend>
-          <div className="flex gap-4">
-            {(["private", "workspace", "public"] as const).map((v) => (
-              <label key={v} className="flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  name="visibility"
-                  checked={visibility === v}
-                  onChange={() => setVisibility(v)}
-                />
-                {v}
-              </label>
+        <div className="mt-6">
+          <p className="control-kicker">Add a part</p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {BLOCK_TYPES.map((type) => (
+              <Button key={type} variant="glass" size="sm" onClick={() => addBlock(type)}>
+                + {type}
+              </Button>
             ))}
           </div>
-          {!owner && (
-            <p className="text-xs text-black/50 dark:text-white/50">
-              Sign in for &ldquo;workspace&rdquo; visibility to actually be shared with anyone.
-            </p>
-          )}
-          {visibility === "public" && (
-            <p className="text-xs text-amber-600">
-              Visible to anyone on the internet, even without an account — it&rsquo;ll show up on
-              the <Link href="/community" className="underline">Community</Link> page. Only you
-              can still edit it or add records.
-            </p>
-          )}
-        </fieldset>
+        </div>
+      </aside>
 
-        <div className="flex flex-col gap-2">
-          {blocks.map((block, i) => (
+      {/* center: what you're making, working, plus how it looks */}
+      <section className="workspace-canvas">
+        <div className="canvas-grid" aria-hidden="true" />
+        <div className="canvas-toolbar">
+          <div className="privacy-switch">
+            <Button variant={tab === "preview" ? "ink" : "quiet"} size="sm" onClick={() => setTab("preview")}>
+              Preview
+            </Button>
+            <Button variant={tab === "design" ? "ink" : "quiet"} size="sm" onClick={() => setTab("design")}>
+              Design
+            </Button>
+          </div>
+          <span className="font-mono text-[9px] uppercase text-muted-foreground">
+            {toolId ? "Saved tool" : "Not saved yet"} · edits appear instantly
+          </span>
+        </div>
+
+        <div className="canvas-body">
+          {tab === "preview" ? (
+            previewValid ? (
+              <div className="mx-auto max-w-xl">
+                <ToolRenderer schema={previewSchema} toolId={toolId} themeColor={accentOf(themeColor)} />
+              </div>
+            ) : (
+              <div className="grid min-h-[20rem] place-items-center text-center">
+                <p className="max-w-[28ch] text-sm leading-relaxed text-muted-foreground">
+                  {blocks.length === 0
+                    ? "Add a part on the left and it appears here, working."
+                    : "Finish filling in the highlighted part and the preview comes back."}
+                </p>
+              </div>
+            )
+          ) : (
+            <div className="animate-reveal mx-auto max-w-md space-y-8">
+              <div>
+                <p className="control-kicker">Accent color</p>
+                <div className="mt-4">
+                  <AccentPicker value={themeColor} onChange={setThemeColor} />
+                </div>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  Used for this tool&rsquo;s buttons, marked calendar days, chart bars, and its own app icon
+                  when installed.
+                </p>
+              </div>
+              <label className="block">
+                <span className="control-kicker">Description</span>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  maxLength={280}
+                  placeholder="One or two sentences on what this is for. Shown on the Community page."
+                  className="mt-3 w-full resize-none border-b border-border bg-transparent pb-2 text-sm leading-relaxed outline-none focus:border-foreground"
+                />
+              </label>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* right: edit the selected part, then release */}
+      <aside className="workspace-test">
+        <span className="font-mono text-[9px] uppercase text-muted-foreground">
+          {selectedBlock ? "Edit part" : "Edit & release"}
+        </span>
+        <div className="mt-6">
+          {selectedBlock && selected !== null ? (
             <BlockEditor
-              key={i}
-              block={block}
-              onChange={(next) => updateBlock(i, next)}
-              onRemove={() => removeBlock(i)}
+              key={selected}
+              block={selectedBlock}
+              onChange={(next) => updateBlock(selected, next)}
+              onRemove={() => removeBlock(selected)}
               toolId={toolId}
               plan={owner?.plan ?? "free"}
             />
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {BLOCK_TYPES.map((type) => (
-            <button
-              key={type}
-              onClick={() => addBlock(type)}
-              className="rounded-md border border-black/15 px-3 py-1.5 text-sm hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
-            >
-              + {type}
-            </button>
-          ))}
-        </div>
-        </>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={save}
-            disabled={saving || blocks.length === 0}
-            className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50 dark:bg-white dark:text-black"
-          >
-            {saving ? "Saving…" : toolId ? "Save changes" : "Create tool"}
-          </button>
-
-          {toolId && !confirmingDelete && (
-            <button
-              onClick={() => setConfirmingDelete(true)}
-              className="text-sm text-red-600 underline hover:text-red-700"
-            >
-              Delete tool
-            </button>
-          )}
-          {toolId && confirmingDelete && (
-            <span className="flex items-center gap-2 text-sm">
-              Delete this tool and all its data?
-              <button
-                onClick={deleteTool}
-                disabled={deleting}
-                className="font-medium text-red-600 underline hover:text-red-700 disabled:opacity-50"
-              >
-                {deleting ? "Deleting…" : "Yes, delete"}
-              </button>
-              <button
-                onClick={() => setConfirmingDelete(false)}
-                className="text-black/50 underline dark:text-white/50"
-              >
-                Cancel
-              </button>
-            </span>
+          ) : (
+            <p className="text-xs leading-relaxed text-muted-foreground">Pick a part on the left to edit it.</p>
           )}
         </div>
 
-        {status && (
-          <p className="text-sm">
-            {status}
-            {status.includes("upgrade to Pro") && (
-              <>
-                {" "}
-                <Link href="/pricing" className="underline">
-                  See plans
-                </Link>
-                .
-              </>
-            )}
+        <div className="mt-10">
+          <p className="control-kicker">Who can see it</p>
+          <div className="privacy-switch mt-3">
+            {VISIBILITIES.map((v) => (
+              <Button
+                key={v}
+                size="sm"
+                variant={visibility === v ? (v === "public" ? "signal" : "ink") : "quiet"}
+                onClick={() => setVisibility(v)}
+                className="capitalize"
+              >
+                {v}
+              </Button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {VISIBILITY_HINT[visibility]}
+            {!owner && " Sign in for this to apply to anyone else."}
           </p>
-        )}
-      </div>
+        </div>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-black/60 dark:text-white/60">Live preview</h2>
-        {previewValid && toolId ? (
-          <ToolRenderer schema={previewSchema} toolId={toolId} themeColor={themeColor} />
-        ) : (
-          <p className="rounded-lg border border-dashed border-black/15 p-4 text-sm text-black/50 dark:border-white/20 dark:text-white/50">
-            {blocks.length === 0
-              ? "Add a block to see a preview."
-              : "Save once to get a persisted preview (actions need a saved tool id)."}
-          </p>
-        )}
-      </div>
-    </div>
+        <div className="mt-auto pt-8">
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <Button variant="signal" onClick={save} disabled={saving || blocks.length === 0}>
+              {saving ? "Saving…" : toolId ? "Save changes" : "Create tool"}
+            </Button>
+            {toolId && <ShareMenu url={`/tools/${toolId}`} title={name} />}
+          </div>
+
+          {toolId && (
+            <div className="mt-4 flex items-center gap-3 text-xs">
+              <Link href={`/tools/${toolId}`} className="text-muted-foreground underline hover:text-foreground">
+                Open tool
+              </Link>
+              {!confirmingDelete ? (
+                <button onClick={() => setConfirmingDelete(true)} className="text-destructive underline">
+                  Delete
+                </button>
+              ) : (
+                <span className="flex items-center gap-2">
+                  Delete it and all its data?
+                  <button onClick={deleteTool} disabled={deleting} className="font-medium text-destructive underline disabled:opacity-50">
+                    {deleting ? "Deleting…" : "Yes"}
+                  </button>
+                  <button onClick={() => setConfirmingDelete(false)} className="text-muted-foreground underline">
+                    No
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+
+          {status && (
+            <p className="mt-4 border-l-2 border-signal pl-3 text-xs leading-relaxed text-muted-foreground">
+              {status}
+              {status.includes("upgrade to Pro") && (
+                <>
+                  {" "}
+                  <Link href="/pricing" className="underline">
+                    See plans
+                  </Link>
+                  .
+                </>
+              )}
+            </p>
+          )}
+        </div>
+      </aside>
+    </section>
   );
 }
 

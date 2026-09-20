@@ -1,48 +1,39 @@
-import Link from "next/link";
-import { DepthField } from "@/components/home/DepthField";
+import { ButtonLink } from "@/components/ui/button";
+import { AutoPreview } from "@/components/home/AutoPreview";
 import { BuildTimeline } from "@/components/home/BuildTimeline";
 
 export default function Home() {
   return (
-    <div className="relative">
-      <DepthField />
-
-      <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-6 px-6 pt-32 pb-40 text-center">
-        <h1 className="text-5xl font-semibold tracking-tight sm:text-6xl">
+    <>
+      <div className="relative flex min-h-[78vh] flex-col items-center justify-center py-16 text-center">
+        <h1 className="relative z-10 max-w-2xl text-balance font-display text-4xl font-semibold leading-[1.06] sm:text-6xl">
           Describe any tool. Watch it get built.
         </h1>
-        <p className="max-w-xl text-lg text-black/60 dark:text-white/60">
-          Not a fixed set of templates — pick the pieces, arrange them your way, and ship
-          literally any tool you can describe. Install it like a real app on your phone or
-          computer, with nothing to download from a store.
+        <p className="relative z-30 mt-6 max-w-[46ch] text-pretty text-sm leading-relaxed text-foreground/70 sm:text-base">
+          Not a fixed set of templates. Say what you need and it becomes a working tool, then keep it
+          private, share it, or install it on your phone or computer as its own app.
         </p>
-        <Link
-          href="/generate"
-          className="mt-2 rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
-        >
+        <ButtonLink href="/generate" variant="signal" size="lg" className="relative z-30 mt-9">
           Start building
-        </Link>
+        </ButtonLink>
       </div>
 
-      <div className="relative mx-auto max-w-3xl px-6 pb-24 text-center">
-        <h2 className="text-3xl font-semibold">From a description to something you can use.</h2>
+      <div className="mt-10 text-center">
+        <h2 className="font-display text-2xl font-semibold">A tool appears as you make decisions.</h2>
+        <div className="mt-8">
+          <AutoPreview />
+        </div>
       </div>
 
-      <div className="relative px-6 pb-40">
-        <BuildTimeline />
-      </div>
-
-      <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-6 px-6 pb-40 text-center">
-        <p className="max-w-md text-black/60 dark:text-white/60">
-          See what other people have already built and shared.
-        </p>
-        <Link
-          href="/community"
-          className="rounded-full border border-black/15 px-6 py-3 text-sm font-medium transition hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
-        >
+      <div className="mx-auto mt-32 max-w-5xl text-center">
+        <h2 className="font-display text-2xl font-semibold sm:text-3xl">From a sentence to an app of your own.</h2>
+        <div className="mt-16">
+          <BuildTimeline />
+        </div>
+        <ButtonLink href="/community" variant="glass" className="mt-16">
           Explore community tools
-        </Link>
+        </ButtonLink>
       </div>
-    </div>
+    </>
   );
 }

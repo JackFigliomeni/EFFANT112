@@ -21,7 +21,9 @@ export function ToolRenderer({
   themeColor,
 }: {
   schema: ToolSchema;
-  toolId: string;
+  // null = not saved yet: everything works, but records live in memory only
+  // (that's how Generator and Builder preview a tool before it exists).
+  toolId: string | null;
   // Set in the Builder's Design tab (tools.theme_color) — the tool's own
   // accent, so an installed tool doesn't just inherit the site's black/white.
   themeColor?: string;
@@ -36,6 +38,7 @@ export function ToolRenderer({
 
   const fetchTable = useCallback(
     async (tableId: string) => {
+      if (!toolId) return;
       try {
         const { data, error } = await supabase
           .from("tool_records")
@@ -60,6 +63,7 @@ export function ToolRenderer({
   );
 
   useEffect(() => {
+    if (!toolId) return;
     for (const table of tableBlocks) {
       fetchTable(table.id);
     }
@@ -73,6 +77,13 @@ export function ToolRenderer({
     const data = table
       ? Object.fromEntries(table.fields.map((f) => [f, draft[f] ?? null]))
       : draft;
+
+    if (!toolId) {
+      const row: Row = { id: crypto.randomUUID(), data, created_at: new Date().toISOString() };
+      setRowsByTable((prev) => ({ ...prev, [tableId]: [row, ...(prev[tableId] ?? [])] }));
+      setStatus("Added to the preview (not saved anywhere yet).");
+      return;
+    }
 
     try {
       const { error } = await supabase.from("tool_records").insert({
@@ -93,6 +104,10 @@ export function ToolRenderer({
 
   async function handleDeleteRecord(recordId: string, tableId: string) {
     setStatus(null);
+    if (!toolId) {
+      setRowsByTable((prev) => ({ ...prev, [tableId]: (prev[tableId] ?? []).filter((r) => r.id !== recordId) }));
+      return;
+    }
     try {
       const { error } = await supabase.from("tool_records").delete().eq("id", recordId);
       if (error) {
@@ -112,6 +127,14 @@ export function ToolRenderer({
     if (!row) return;
     const updatedData = { ...row.data, [field]: !row.data[field] };
 
+    if (!toolId) {
+      setRowsByTable((prev) => ({
+        ...prev,
+        [tableId]: (prev[tableId] ?? []).map((r) => (r.id === recordId ? { ...r, data: updatedData } : r)),
+      }));
+      return;
+    }
+
     try {
       const { error } = await supabase.from("tool_records").update({ data: updatedData }).eq("id", recordId);
       if (error) {
@@ -128,7 +151,7 @@ export function ToolRenderer({
   return (
     <div className="flex flex-col gap-4">
       {status && (
-        <div className="rounded-md bg-black/5 px-3 py-2 text-sm dark:bg-white/10">{status}</div>
+        <div className="rounded-full border border-border bg-card/70 px-4 py-2 text-xs text-muted-foreground">{status}</div>
       )}
 
       {schema.blocks.map((block) => {
@@ -186,7 +209,7 @@ export function ToolRenderer({
                 key={block.id}
                 onClick={() => handleAddRecord(block.target)}
                 className="w-fit rounded-md px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                style={{ backgroundColor: themeColor ?? "#171717" }}
+                style={{ backgroundColor: themeColor ?? "var(--foreground)" }}
               >
                 {block.label ?? "add record"}
               </button>
@@ -196,7 +219,7 @@ export function ToolRenderer({
             // Notifications need server-side infra (cron/push) that's out of
             // scope for the engine — shown as a passive note for now.
             return (
-              <p key={block.id} className="text-xs text-black/50 dark:text-white/50">
+              <p key={block.id} className="text-xs text-muted-foreground">
                 Rule (not yet enforced): when <em>{block.when}</em>, then <em>{block.then}</em>.
               </p>
             );
@@ -207,7 +230,7 @@ export function ToolRenderer({
             // beyond a note; the new record just shows up in whichever view
             // reads from `target`.
             return (
-              <p key={block.id} className="text-xs text-black/50 dark:text-white/50">
+              <p key={block.id} className="text-xs text-muted-foreground">
                 Automation: runs daily, adds a new record to <em>{block.target}</em> generated from
                 &ldquo;{block.prompt}&rdquo;{block.useWebSearch ? " (with web search)" : ""}.
               </p>

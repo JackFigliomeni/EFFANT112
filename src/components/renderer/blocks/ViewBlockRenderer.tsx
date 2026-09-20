@@ -30,7 +30,7 @@ function RowActions({
       {onToggle && toggleField && (
         <button
           onClick={() => onToggle(rowId)}
-          className="text-xs underline text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white"
+          className="text-xs underline text-muted-foreground hover:text-foreground"
         >
           {toggleValue ? `unmark ${toggleField}` : `mark ${toggleField}`}
         </button>
@@ -38,7 +38,7 @@ function RowActions({
       {onDelete && (
         <button
           onClick={() => onDelete(rowId)}
-          className="text-xs text-red-500 hover:text-red-600"
+          className="text-xs text-red-500 hover:text-destructive"
           aria-label="Delete"
         >
           ×
@@ -67,9 +67,9 @@ export function ViewBlockRenderer({
 }) {
   if (block.display === "count") {
     return (
-      <div className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black/20">
+      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
         <div className="text-3xl font-semibold">{rows.length}</div>
-        <div className="text-sm text-black/60 dark:text-white/60">records in &ldquo;{block.source}&rdquo;</div>
+        <div className="text-sm text-muted-foreground">records in &ldquo;{block.source}&rdquo;</div>
       </div>
     );
   }
@@ -83,9 +83,9 @@ export function ViewBlockRenderer({
           ? values.reduce((a, b) => a + b, 0) / values.length
           : 0;
     return (
-      <div className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black/20">
+      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
         <div className="text-3xl font-semibold">{Number.isInteger(result) ? result : result.toFixed(2)}</div>
-        <div className="text-sm text-black/60 dark:text-white/60">
+        <div className="text-sm text-muted-foreground">
           {block.display} of &ldquo;{block.field}&rdquo; across {values.length} record{values.length === 1 ? "" : "s"}
         </div>
       </div>
@@ -95,17 +95,17 @@ export function ViewBlockRenderer({
   if (block.display === "latest") {
     const latest = rows[0]; // rows already ordered newest-first by the caller
     return (
-      <div className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black/20">
+      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
         {latest ? (
           <ul className="text-sm">
             {Object.entries(latest.data).map(([k, v]) => (
               <li key={k}>
-                <span className="text-black/50 dark:text-white/50">{k}:</span> {String(v)}
+                <span className="text-muted-foreground">{k}:</span> {String(v)}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-black/50 dark:text-white/50">No records yet.</p>
+          <p className="text-sm text-muted-foreground">No records yet.</p>
         )}
       </div>
     );
@@ -126,9 +126,9 @@ export function ViewBlockRenderer({
     const width = points.length * (barWidth + gap) || barWidth;
 
     return (
-      <div className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black/20">
+      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
         {points.length === 0 ? (
-          <p className="text-sm text-black/50 dark:text-white/50">No records yet.</p>
+          <p className="text-sm text-muted-foreground">No records yet.</p>
         ) : (
           <svg viewBox={`0 0 ${width} ${height}`} className="h-24 w-full" preserveAspectRatio="none">
             {points.map((v, i) => {
@@ -140,13 +140,13 @@ export function ViewBlockRenderer({
                   y={height - barHeight}
                   width={barWidth}
                   height={barHeight}
-                  fill={themeColor ?? "#10b981"}
+                  fill={themeColor ?? "var(--fresh)"}
                 />
               );
             })}
           </svg>
         )}
-        <div className="mt-1 text-xs text-black/50 dark:text-white/50">&ldquo;{field}&rdquo; over time</div>
+        <div className="mt-1 text-xs text-muted-foreground">&ldquo;{field}&rdquo; over time</div>
       </div>
     );
   }
@@ -175,13 +175,13 @@ export function ViewBlockRenderer({
     ];
 
     return (
-      <div className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black/20">
+      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
         <div className="mb-2 text-sm font-medium">
           {firstDay.toLocaleString(undefined, { month: "long", year: "numeric" })}
         </div>
         <div className="grid grid-cols-7 gap-1 text-center text-xs">
           {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-            <div key={i} className="text-black/40 dark:text-white/40">{d}</div>
+            <div key={i} className="text-muted-foreground">{d}</div>
           ))}
           {cells.map((day, i) => {
             if (day === null) return <div key={i} />;
@@ -190,9 +190,9 @@ export function ViewBlockRenderer({
               <div
                 key={i}
                 className={`aspect-square rounded flex items-center justify-center ${
-                  marked ? "text-white" : "bg-black/5 dark:bg-white/10"
+                  marked ? "text-white" : "bg-accent"
                 }`}
-                style={marked ? { backgroundColor: themeColor ?? "#10b981" } : undefined}
+                style={marked ? { backgroundColor: themeColor ?? "var(--fresh)" } : undefined}
               >
                 {day}
               </div>
@@ -206,10 +206,10 @@ export function ViewBlockRenderer({
   if (block.display === "table") {
     const columns = rows.length > 0 ? Object.keys(rows[0].data) : [];
     return (
-      <div className="overflow-x-auto rounded-lg border border-black/10 dark:border-white/10">
+      <div className="overflow-x-auto rounded-[20px] border border-border bg-card/70">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-black/5 dark:bg-white/10">
+            <tr className="bg-accent">
               {columns.map((c) => (
                 <th key={c} className="px-3 py-2 text-left font-medium">{c}</th>
               ))}
@@ -218,7 +218,7 @@ export function ViewBlockRenderer({
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-t border-black/10 dark:border-white/10">
+              <tr key={r.id} className="border-t border-border">
                 {columns.map((c) => (
                   <td key={c} className="px-3 py-2">{String(r.data[c])}</td>
                 ))}
@@ -237,7 +237,7 @@ export function ViewBlockRenderer({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td className="px-3 py-4 text-black/50 dark:text-white/50">No records yet.</td>
+                <td className="px-3 py-4 text-muted-foreground">No records yet.</td>
               </tr>
             )}
           </tbody>
@@ -248,7 +248,7 @@ export function ViewBlockRenderer({
 
   // list (default)
   return (
-    <ul className="divide-y divide-black/10 rounded-lg border border-black/10 dark:divide-white/10 dark:border-white/10">
+    <ul className="divide-y divide-border rounded-[20px] border border-border bg-card/70">
       {rows.map((r) => (
         <li key={r.id} className="flex items-center justify-between px-3 py-2 text-sm">
           <span>{Object.entries(r.data).map(([k, v]) => `${k}: ${v}`).join(" · ")}</span>
@@ -262,7 +262,7 @@ export function ViewBlockRenderer({
         </li>
       ))}
       {rows.length === 0 && (
-        <li className="px-3 py-4 text-sm text-black/50 dark:text-white/50">No records yet.</li>
+        <li className="px-3 py-4 text-sm text-muted-foreground">No records yet.</li>
       )}
     </ul>
   );

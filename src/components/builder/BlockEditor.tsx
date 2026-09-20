@@ -55,20 +55,18 @@ export function BlockEditor({
     }
   }
   const fieldClass =
-    "rounded-md border border-black/15 px-2 py-1 text-sm dark:border-white/20 dark:bg-transparent";
+    "w-full border-b border-border bg-transparent px-0 py-1.5 text-sm outline-none transition-colors focus:border-foreground";
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-black/10 p-3 dark:border-white/10">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">
-          {block.type}
-        </span>
-        <button onClick={onRemove} className="text-xs text-red-600 hover:underline">
+        <span className="control-kicker">{block.type}</span>
+        <button onClick={onRemove} className="text-xs text-destructive hover:underline">
           Remove
         </button>
       </div>
 
-      <label className="flex flex-col gap-1 text-xs">
+      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
         Block id
         <input
           className={fieldClass}
@@ -79,7 +77,7 @@ export function BlockEditor({
 
       {block.type === "input" && (
         <>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Label
             <input
               className={fieldClass}
@@ -87,7 +85,7 @@ export function BlockEditor({
               onChange={(e) => onChange({ ...block, label: e.target.value })}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Kind
             <select
               className={fieldClass}
@@ -100,7 +98,7 @@ export function BlockEditor({
             </select>
           </label>
           {(block.kind === "select" || block.kind === "multiselect") && (
-            <label className="flex flex-col gap-1 text-xs">
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
               Options (comma separated)
               <input
                 className={fieldClass}
@@ -118,7 +116,7 @@ export function BlockEditor({
       )}
 
       {block.type === "table" && (
-        <label className="flex flex-col gap-1 text-xs">
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           Fields (comma separated)
           <input
             className={fieldClass}
@@ -132,7 +130,7 @@ export function BlockEditor({
 
       {block.type === "view" && (
         <>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Source table id
             <input
               className={fieldClass}
@@ -140,7 +138,7 @@ export function BlockEditor({
               onChange={(e) => onChange({ ...block, source: e.target.value })}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Display
             <select
               className={fieldClass}
@@ -153,7 +151,7 @@ export function BlockEditor({
             </select>
           </label>
           {(block.display === "sum" || block.display === "average" || block.display === "chart") && (
-            <label className="flex flex-col gap-1 text-xs">
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
               Field to aggregate
               <input
                 className={fieldClass}
@@ -168,7 +166,7 @@ export function BlockEditor({
 
       {block.type === "action" && (
         <>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Does
             <select
               className={fieldClass}
@@ -180,7 +178,7 @@ export function BlockEditor({
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Target table id
             <input
               className={fieldClass}
@@ -188,7 +186,7 @@ export function BlockEditor({
               onChange={(e) => onChange({ ...block, target: e.target.value })}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Button label (optional)
             <input
               className={fieldClass}
@@ -197,7 +195,7 @@ export function BlockEditor({
             />
           </label>
           {block.does === "update_record" && (
-            <label className="flex flex-col gap-1 text-xs">
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
               Boolean field to toggle
               <input
                 className={fieldClass}
@@ -207,7 +205,7 @@ export function BlockEditor({
             </label>
           )}
           {(block.does === "update_record" || block.does === "delete_record") && (
-            <p className="text-xs text-black/40 dark:text-white/40">
+            <p className="text-xs text-muted-foreground">
               Shown as a per-row button on any view of this table, not a standalone button.
             </p>
           )}
@@ -216,7 +214,7 @@ export function BlockEditor({
 
       {block.type === "rule" && (
         <>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             When
             <input
               className={fieldClass}
@@ -224,7 +222,7 @@ export function BlockEditor({
               onChange={(e) => onChange({ ...block, when: e.target.value })}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Then
             <input
               className={fieldClass}
@@ -237,7 +235,7 @@ export function BlockEditor({
 
       {block.type === "automation" && (
         <>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Target table id
             <input
               className={fieldClass}
@@ -245,7 +243,7 @@ export function BlockEditor({
               onChange={(e) => onChange({ ...block, target: e.target.value })}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Prompt (what Claude should generate each run)
             <textarea
               className={fieldClass}
@@ -254,7 +252,7 @@ export function BlockEditor({
               onChange={(e) => onChange({ ...block, prompt: e.target.value })}
             />
           </label>
-          <label className="flex items-center gap-2 text-xs">
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
             <input
               type="checkbox"
               checked={block.useWebSearch}
@@ -263,11 +261,11 @@ export function BlockEditor({
             Use real web search (e.g. to find an actual article/recipe link)
           </label>
           {plan === "pro" ? (
-            <p className="text-xs text-black/40 dark:text-white/40">
+            <p className="text-xs text-muted-foreground">
               Runs automatically once a day, inserting one new record into the target table.
             </p>
           ) : (
-            <p className="text-xs text-black/40 dark:text-white/40">
+            <p className="text-xs text-muted-foreground">
               Free plan: doesn&rsquo;t run automatically — use &ldquo;Test run&rdquo; to try it (
               {Math.max(0, PLAN_LIMITS.free.automationTestRuns - block.testRunsUsed)} of{" "}
               {PLAN_LIMITS.free.automationTestRuns} left). Upgrade to Pro for it to run every day on
@@ -281,14 +279,14 @@ export function BlockEditor({
                 type="button"
                 onClick={runTest}
                 disabled={testing || (plan !== "pro" && block.testRunsUsed >= PLAN_LIMITS.free.automationTestRuns)}
-                className="w-fit rounded-md border border-black/15 px-2 py-1 text-xs hover:bg-black/5 disabled:opacity-50 dark:border-white/20 dark:hover:bg-white/10"
+                className="w-fit rounded-full border border-border bg-card/65 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-card disabled:opacity-50"
               >
                 {testing ? "Running…" : "Test run"}
               </button>
-              {testStatus && <span className="text-xs text-black/50 dark:text-white/50">{testStatus}</span>}
+              {testStatus && <span className="text-xs text-muted-foreground">{testStatus}</span>}
             </div>
           ) : (
-            <p className="text-xs text-black/40 dark:text-white/40">Save the tool first to test this.</p>
+            <p className="text-xs text-muted-foreground">Save the tool first to test this.</p>
           )}
         </>
       )}

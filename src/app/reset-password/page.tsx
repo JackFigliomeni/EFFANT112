@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -26,34 +27,26 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col gap-4 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">Reset password</h1>
-      </div>
+    <div className="mx-auto w-full max-w-sm py-20">
+      <span className="font-mono text-[10px] uppercase text-signal">Account access</span>
+      <h1 className="mt-3 font-display text-3xl font-semibold">Reset your password.</h1>
 
       {sent ? (
-        <p className="text-sm">Check your email for a password reset link.</p>
+        <p className="mt-10 text-sm">Check your email for a password reset link.</p>
       ) : (
-        <>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
-          />
-          <button
-            onClick={sendResetLink}
-            disabled={!email}
-            className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50 dark:bg-white dark:text-black"
-          >
+        <div className="mt-10 space-y-5">
+          <label className="block text-xs font-medium">
+            Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="field mt-1" />
+          </label>
+          <Button variant="signal" size="lg" className="w-full" onClick={sendResetLink} disabled={!email}>
             Send reset link
-          </button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-        </>
+          </Button>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
       )}
 
-      <Link href="/login" className="w-fit text-xs text-black/50 underline dark:text-white/50">
+      <Link href="/login" className="mt-8 inline-block text-xs text-muted-foreground underline">
         Back to sign in
       </Link>
     </div>

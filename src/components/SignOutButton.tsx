@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 
 export function SignOutButton() {
   const supabase = createClient();
@@ -16,8 +17,8 @@ export function SignOutButton() {
   }
 
   return (
-    <button onClick={signOut} className="hover:underline hover:text-black dark:hover:text-white">
+    <Button variant="quiet" size="sm" onClick={signOut}>
       Sign out
-    </button>
+    </Button>
   );
 }

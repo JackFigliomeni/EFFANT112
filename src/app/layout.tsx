@@ -1,63 +1,55 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { AuthNavStatus } from "@/components/AuthNavStatus";
+import { AmbientBackground } from "@/components/site/AmbientBackground";
+import { MobileNav, PillNav } from "@/components/site/PillNav";
+import { SiteFooter } from "@/components/site/SiteFooter";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
   title: "effant",
-  description: "Build a small tool by prompt or by hand, and use it from a link on any device.",
+  description: "Describe any tool and it gets built. Keep it private, share it, or install it as its own app.",
 };
-
-const NAV_LINKS = [
-  { href: "/community", label: "Community" },
-  { href: "/gallery", label: "Gallery" },
-  { href: "/generate", label: "Generate" },
-  { href: "/builder", label: "Builder" },
-  { href: "/publish", label: "Publish" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/settings", label: "Settings" },
-  { href: "/tools/demo", label: "Phase 1 demo" },
-];
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
-        <header className="flex flex-wrap items-center gap-4 border-b border-black/10 px-6 py-3 dark:border-white/10">
-          <Link href="/" className="text-sm font-semibold">
-            effant
-          </Link>
-          <nav className="flex flex-wrap items-center gap-3 text-sm text-black/60 dark:text-white/60">
-            {NAV_LINKS.map((link) => (
-              <Link key={link.href} href={link.href} className="hover:underline hover:text-black dark:hover:text-white">
-                {link.label}
+    <html lang="en" className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}>
+      <body className="min-h-full">
+        <div className="relative min-h-screen overflow-x-clip bg-background text-foreground selection:bg-signal/20">
+          <AmbientBackground />
+          <div className="relative z-10 mx-auto max-w-[90rem] px-4 pb-24 sm:px-7 sm:pb-16">
+            <header className="flex items-center gap-4 py-5">
+              <Link
+                href="/"
+                className="mr-auto font-mono text-xs font-semibold uppercase"
+                aria-label="effant home"
+              >
+                effant
               </Link>
-            ))}
-            <Suspense fallback={<span className="opacity-0">Sign in</span>}>
-              <AuthNavStatus />
-            </Suspense>
-          </nav>
-        </header>
-        <main className="flex-1">{children}</main>
-        <footer className="flex justify-center gap-4 border-t border-black/10 px-6 py-4 text-xs text-black/50 dark:border-white/10 dark:text-white/50">
-          <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
-          <Link href="/terms" className="hover:underline">Terms of Service</Link>
-        </footer>
+              <PillNav />
+              <Suspense fallback={<span className="w-16" />}>
+                <AuthNavStatus />
+              </Suspense>
+            </header>
+            <main>{children}</main>
+            <SiteFooter />
+          </div>
+          <MobileNav />
+        </div>
       </body>
     </html>
   );

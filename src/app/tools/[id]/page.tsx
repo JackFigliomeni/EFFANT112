@@ -5,7 +5,7 @@ import { validateToolSchema } from "@/lib/schema";
 import { ToolRenderer } from "@/components/renderer/ToolRenderer";
 import { ReportButton } from "@/components/ReportButton";
 import { ToolServiceWorker } from "@/components/ToolServiceWorker";
-import { BASE_TOOL_COLUMNS, EXTRA_TOOL_COLUMNS, isMissingColumn } from "@/lib/toolColumns";
+import { BASE_TOOL_COLUMNS, EXTRA_TOOL_COLUMNS, accentOf, isMissingColumn } from "@/lib/toolColumns";
 
 /**
  * Makes a tool "Add to Home Screen"-installable as its own standalone app —
@@ -50,10 +50,10 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
 
   if (error || !tool) {
     return (
-      <div className="mx-auto max-w-lg p-6 text-sm">
+      <div className="mx-auto max-w-lg py-24 text-sm">
         Couldn&rsquo;t load this tool — either it doesn&rsquo;t exist, or you don&rsquo;t have
         access to it.
-        {error && <p className="mt-2 text-black/50 dark:text-white/50">{error.message}</p>}
+        {error && <p className="mt-2 text-muted-foreground">{error.message}</p>}
       </div>
     );
   }
@@ -61,27 +61,26 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
   const validation = validateToolSchema(tool.schema);
   if (!validation.ok) {
     return (
-      <div className="mx-auto max-w-lg p-6 text-sm text-red-600">
+      <div className="mx-auto max-w-lg py-24 text-sm text-destructive">
         This tool&rsquo;s saved schema is invalid: {validation.error}
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-4 p-6">
+    <div className="mx-auto flex max-w-xl flex-col gap-8 py-10">
       <ToolServiceWorker />
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{tool.name}</h1>
+      <div className="flex items-end justify-between gap-4">
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight">{tool.name}</h1>
         {user?.id === tool.owner_id && (
-          <Link href={`/builder?id=${tool.id}`} className="text-sm underline">
+          <Link href={`/builder?id=${tool.id}`} className="shrink-0 text-xs text-muted-foreground underline hover:text-foreground">
             Edit
           </Link>
         )}
       </div>
-      <ToolRenderer schema={validation.schema} toolId={tool.id} themeColor={tool.theme_color} />
-      {tool.visibility === "public" && user?.id !== tool.owner_id && (
-        <ReportButton toolId={tool.id} />
-      )}
+      {tool.description && <p className="-mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">{tool.description}</p>}
+      <ToolRenderer schema={validation.schema} toolId={tool.id} themeColor={accentOf(tool.theme_color)} />
+      {tool.visibility === "public" && user?.id !== tool.owner_id && <ReportButton toolId={tool.id} />}
     </div>
   );
 }

@@ -1,26 +1,242 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Light only — the design has no dark theme. Making `dark:` apply only under
+ * an explicit `.dark` ancestor (which nothing sets) stops the OS dark-mode
+ * preference from flipping half the site to dark styling. */
+@custom-variant dark (&:is(.dark *));
 
+/*
+ * Design system ported 1:1 from the Lovable design (craft-share-deploy).
+ * All colors are oklch. @theme inline maps the custom properties to Tailwind
+ * utilities (bg-signal, text-muted-foreground, ...).
+ */
 @theme inline {
+  --font-sans: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  --font-display: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-signal: var(--signal);
+  --color-signal-foreground: var(--signal-foreground);
+  --color-cool: var(--cool);
+  --color-fresh: var(--fresh);
+  --shadow-soft: 0 18px 50px color-mix(in oklab, var(--foreground) 7%, transparent);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 1.25rem;
+  --background: oklch(0.95 0.009 255);
+  --foreground: oklch(0.22 0.011 255);
+  --card: oklch(0.99 0.003 255);
+  --card-foreground: oklch(0.22 0.011 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.129 0.042 264.695);
+  --primary: oklch(0.22 0.011 255);
+  --primary-foreground: oklch(0.98 0.003 255);
+  --secondary: oklch(0.93 0.011 255);
+  --secondary-foreground: oklch(0.22 0.011 255);
+  --muted: oklch(0.92 0.009 255);
+  --muted-foreground: oklch(0.53 0.018 255);
+  --accent: oklch(0.92 0.012 255);
+  --accent-foreground: oklch(0.22 0.011 255);
+  --signal: oklch(0.59 0.18 33);
+  --signal-foreground: oklch(0.99 0 0);
+  --cool: oklch(0.64 0.16 251);
+  --fresh: oklch(0.67 0.14 157);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.984 0.003 247.858);
+  --border: oklch(0.86 0.012 255);
+  --input: oklch(0.929 0.013 255.508);
+  --ring: oklch(0.704 0.04 256.788);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+    letter-spacing: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes fitted-part {
+  0% { opacity: 0; transform: translateX(-18px) rotate(-1deg); }
+  65% { transform: translateX(3px) rotate(0); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes bubble-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  35% { transform: translate3d(7rem, 3rem, 0) scale(1.12); }
+  70% { transform: translate3d(-2rem, 8rem, 0) scale(.92); }
+}
+
+@keyframes bubble-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(.9); }
+  40% { transform: translate3d(-9rem, 5rem, 0) scale(1.08); }
+  75% { transform: translate3d(3rem, -4rem, 0) scale(1); }
+}
+
+@keyframes orbit-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes orbit-spin-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }
+@keyframes node-pulse { 50% { transform: scale(1.35); opacity: .55; } }
+@keyframes caret-blink { 50% { opacity: 0; } }
+@keyframes sweep { from { transform: translateX(-120%); } to { transform: translateX(420%); } }
+@keyframes room-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(1.4rem, -2.2rem, 0); }
+}
+
+@utility animate-reveal { animation: reveal .8s cubic-bezier(.16,1,.3,1) both; }
+@utility animate-fitted-part { animation: fitted-part .55s cubic-bezier(.16,1,.3,1) both; }
+
+/* ---- ambient bubbles (every page except the home page's 3D room) ---- */
+.bubble {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(1px);
+  opacity: .72;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground) 8%, transparent), inset 2rem 1rem 4rem color-mix(in oklab, var(--card) 38%, transparent);
+  animation: bubble-drift-a 18s ease-in-out infinite;
+}
+.bubble-b,.bubble-d,.bubble-f { animation-name: bubble-drift-b; animation-duration: 22s; }
+.bubble-c,.bubble-g { animation-duration: 26s; }
+
+/* ---- orbit glyph (abstract, no pictograms) ---- */
+.tool-glyph { position: relative; width: 100%; min-width: 16rem; }
+.glyph-orbit { position: absolute; left: 50%; top: 50%; border: 1px solid var(--border); transform: translate(-50%,-50%); }
+.glyph-orbit::after { content:""; position:absolute; left:12%; top:8%; width:.65rem; height:.65rem; border-radius:999px; background:var(--signal); box-shadow:0 0 0 .45rem color-mix(in oklab,var(--signal) 14%,transparent); }
+.glyph-orbit-one { width: 72%; height: 62%; border-radius: 50% 38% 52% 44%; animation: orbit-spin 18s linear infinite; }
+.glyph-orbit-two { width: 48%; height: 82%; border-radius: 42% 58% 38% 62%; border-style: dashed; animation: orbit-spin-reverse 25s linear infinite; }
+.glyph-core { position:absolute; left:50%; top:50%; display:grid; place-items:center; width:5rem; height:5rem; transform:translate(-50%,-50%) rotate(8deg); border:1px solid var(--border); border-radius:34% 66% 58% 42%; background:color-mix(in oklab,var(--card) 78%,transparent); color:var(--foreground); box-shadow:var(--shadow-soft); backdrop-filter:blur(18px); }
+.glyph-node { position:absolute; width:1.1rem; height:1.1rem; border-radius:999px; animation:node-pulse 3s ease-in-out infinite; }
+.glyph-node-1 { left:20%; top:24%; background:var(--signal); }
+.glyph-node-2 { right:17%; top:35%; background:var(--cool); animation-delay:.7s; }
+.glyph-node-3 { left:35%; bottom:12%; background:var(--fresh); animation-delay:1.4s; }
+.glyph-node-4 { right:34%; top:12%; background:var(--foreground); animation-delay:2.1s; }
+
+/* ---- workspace layout (builder / generator / publish) ---- */
+.workspace { min-height:calc(100vh - 6rem); display:grid; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:color-mix(in oklab,var(--background) 86%,transparent); }
+.generator-workspace { grid-template-columns:minmax(12rem,.7fr) minmax(20rem,1.25fr) minmax(20rem,1.1fr); }
+.builder-workspace { grid-template-columns:minmax(13rem,.72fr) minmax(24rem,1.5fr) minmax(17rem,.9fr); }
+.workspace-rail,.workspace-controls,.workspace-test,.workspace-canvas { position:relative; min-width:0; padding:2rem; }
+.workspace-rail,.workspace-controls,.workspace-canvas { border-right:1px solid var(--border); }
+.workspace-rail,.workspace-test { display:flex; flex-direction:column; }
+.stage-track { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:1.5rem; margin-top:4rem; }
+.stage-track::before { content:""; position:absolute; left:1.1rem; top:1rem; bottom:1rem; border-left:1px dashed var(--border); }
+.stage-node { position:relative; z-index:1; display:flex; align-items:center; gap:.75rem; width:100%; font-size:.875rem; text-align:left; }
+.stage-node span:first-child { display:grid; width:2rem; height:2rem; flex-shrink:0; place-items:center; border:1px solid var(--border); border-radius:50%; background:var(--background); font:9px var(--font-jetbrains-mono), monospace; }
+.stage-node.is-active span:first-child { border-color:var(--signal); background:var(--signal); color:var(--signal-foreground); }
+.workspace-controls { display:flex; flex-direction:column; overflow:hidden; }
+.control-kicker { font-size:.68rem; font-family:var(--font-jetbrains-mono), monospace; text-transform:uppercase; color:var(--muted-foreground); }
+.privacy-switch { display:inline-flex; gap:.25rem; padding:.25rem; border:1px solid var(--border); border-radius:999px; }
+.status-dot { width:.6rem; height:.6rem; border-radius:50%; box-shadow:0 0 0 .4rem color-mix(in oklab,currentColor 10%,transparent); }
+.test-readout { display:grid; grid-template-columns:1fr auto; gap:.45rem 1rem; padding-top:1rem; border-top:1px solid var(--border); font-size:.7rem; }
+.test-readout strong { grid-column:1/-1; font-size:1rem; }
+.test-readout span { color:var(--muted-foreground); }
+.part-tab { display:grid; grid-template-columns:1fr auto; align-items:center; gap:.6rem; min-height:3.1rem; width:100%; padding:.7rem .8rem; text-align:left; clip-path:polygon(0 0,88% 0,88% 16%,100% 16%,100% 84%,88% 84%,88% 100%,0 100%); border-left:2px solid var(--cool); background:color-mix(in oklab,var(--card) 80%,transparent); font-size:.72rem; transition:background .2s; }
+.part-tab:hover { background:var(--card); }
+.part-tab.is-selected { border-left-color:var(--signal); background:var(--card); }
+.workspace-canvas { display:flex; min-height:38rem; flex-direction:column; overflow:hidden; }
+.canvas-grid { position:absolute; inset:0; opacity:.42; pointer-events:none; background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px); background-size:2.5rem 2.5rem; mask-image:radial-gradient(circle at center,black,transparent 80%); }
+.canvas-toolbar { position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.canvas-body { position:relative; z-index:2; flex:1; padding-top:1.5rem; }
+.rule-line { display:flex; align-items:center; gap:.7rem; min-height:2.4rem; border-bottom:1px solid var(--border); font-size:.72rem; }
+.rule-line input { accent-color:var(--fresh); }
+
+/* ---- community ---- */
+.community-header { display:grid; grid-template-columns:1fr minmax(18rem,.65fr); gap:4rem; align-items:end; padding:4rem 0 2rem; }
+.community-search { display:flex; align-items:center; gap:.7rem; padding-bottom:.75rem; border-bottom:1px solid var(--foreground); }
+.community-search input { width:100%; background:transparent; font-size:.75rem; outline:none; }
+.community-pulse { display:flex; align-items:center; gap:.35rem; }
+.community-pulse span { width:.55rem; height:.55rem; border-radius:50%; background:var(--border); animation:node-pulse 2.4s ease-in-out infinite; }
+.community-pulse span:nth-child(2) { width:1.4rem; border-radius:999px; background:var(--cool); animation-delay:.5s; }
+.community-pulse span:nth-child(3) { background:var(--fresh); animation-delay:1s; }
+
+/* ---- sign in ---- */
+.auth-orbit { position:absolute; width:min(70vw,48rem); aspect-ratio:1; border:1px dashed var(--border); border-radius:50% 42% 56% 44%; animation:orbit-spin 28s linear infinite; left:50%; top:50%; }
+.auth-orbit::before,.auth-orbit::after { content:""; position:absolute; border-radius:50%; filter:blur(2px); }
+.auth-orbit::before { width:11rem; height:11rem; left:8%; top:10%; background:color-mix(in oklab,var(--signal) 18%,transparent); }
+.auth-orbit::after { width:16rem; height:16rem; right:2%; bottom:4%; background:color-mix(in oklab,var(--cool) 16%,transparent); }
+
+/* ---- home: the 3D room (see components/home/DepthRoom) ---- */
+.room-plane { position:absolute; left:50%; top:50%; transform-style:flat; }
+.room-bubble { position:absolute; left:50%; top:50%; will-change:transform, opacity; }
+
+/* ---- home: scroll timeline (see components/home/BuildTimeline) ---- */
+.timeline-branch { transform-origin:var(--branch-origin, left); transform:scaleX(0); transition:transform .9s cubic-bezier(.16,1,.3,1) .1s; }
+.timeline-step.is-in .timeline-branch { transform:scaleX(1); }
+.timeline-body { opacity:0; transform:translateY(18px); transition:opacity .8s ease .35s, transform .8s cubic-bezier(.16,1,.3,1) .35s; }
+.timeline-step.is-in .timeline-body { opacity:1; transform:none; }
+.timeline-node { transform:scale(0); transition:transform .6s cubic-bezier(.16,1,.3,1); }
+.timeline-step.is-in .timeline-node { transform:scale(1); }
+
+@media (max-width: 900px) {
+  .generator-workspace,.builder-workspace { grid-template-columns:1fr; }
+  .workspace-rail,.workspace-controls,.workspace-canvas { border-right:0; border-bottom:1px solid var(--border); }
+  .workspace { min-height:auto; }
+  .stage-track { margin-top:2rem; flex-direction:row; overflow:auto; }
+  .stage-track::before { left:1rem; right:1rem; top:1rem; bottom:auto; border-left:0; border-top:1px dashed var(--border); }
+}
+
+@media (max-width: 640px) {
+  .community-header { grid-template-columns:1fr; gap:2rem; padding-top:2rem; }
+  .workspace-rail,.workspace-controls,.workspace-test,.workspace-canvas { padding:1.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* room bubbles: shaded like spheres so they read as objects with volume */
+.room-bubble-signal { background: radial-gradient(circle at 30% 26%, color-mix(in oklab, white 78%, var(--signal)) 0%, color-mix(in oklab, var(--signal) 55%, transparent) 42%, color-mix(in oklab, var(--signal) 28%, transparent) 100%); box-shadow: inset -2rem -2.5rem 4rem color-mix(in oklab, var(--signal) 36%, transparent), inset 0 0 0 1px color-mix(in oklab, var(--signal) 26%, transparent); }
+.room-bubble-cool { background: radial-gradient(circle at 30% 26%, color-mix(in oklab, white 78%, var(--cool)) 0%, color-mix(in oklab, var(--cool) 55%, transparent) 42%, color-mix(in oklab, var(--cool) 28%, transparent) 100%); box-shadow: inset -2rem -2.5rem 4rem color-mix(in oklab, var(--cool) 36%, transparent), inset 0 0 0 1px color-mix(in oklab, var(--cool) 26%, transparent); }
+.room-bubble-fresh { background: radial-gradient(circle at 30% 26%, color-mix(in oklab, white 78%, var(--fresh)) 0%, color-mix(in oklab, var(--fresh) 55%, transparent) 42%, color-mix(in oklab, var(--fresh) 28%, transparent) 100%); box-shadow: inset -2rem -2.5rem 4rem color-mix(in oklab, var(--fresh) 36%, transparent), inset 0 0 0 1px color-mix(in oklab, var(--fresh) 26%, transparent); }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+
+/* underline form fields, as in the design's sign-in and settings */
+.field { width:100%; border-bottom:1px solid var(--border); background:transparent; padding:.65rem 0; font-size:.9rem; outline:none; transition:border-color .2s; }
+.field:focus { border-color:var(--foreground); }
+.field::placeholder { color:var(--muted-foreground); }

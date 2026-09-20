@@ -95,14 +95,14 @@ export default function DemoPage() {
     <div className="mx-auto flex max-w-lg flex-col gap-6 p-6">
       <div>
         <h1 className="text-xl font-semibold">Habit Tracker</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
+        <p className="text-sm text-muted-foreground">
           Phase 1 engine demo — rendered live from the hard-coded schema in{" "}
           <code>src/lib/exampleSchemas.ts</code>.
         </p>
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-600">
+        <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-destructive">
           {error}
           {error.includes("fetch") || error.includes("NEXT_PUBLIC") ? (
             <p className="mt-1">
@@ -114,7 +114,7 @@ export default function DemoPage() {
         </div>
       )}
 
-      {!error && !toolId && <p className="text-sm text-black/50 dark:text-white/50">Loading…</p>}
+      {!error && !toolId && <p className="text-sm text-muted-foreground">Loading…</p>}
 
       {toolId && <ToolRenderer schema={habitTrackerSchema} toolId={toolId} />}
     </div>

@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 
 // Depends on runtime env vars — never prerender it statically at build time.
 export const dynamic = "force-dynamic";
@@ -23,9 +24,8 @@ function LoginPageInner() {
   const searchParams = useSearchParams();
   const invite = searchParams.get("invite");
   // The /auth/callback route redirects here with ?error=<code> on failure
-  // (e.g. an invalid/expired magic link, a bad invite code) — this was
-  // previously silently dropped, leaving the user on a blank login page
-  // with no explanation.
+  // (an invalid/expired magic link, a bad invite code) — without showing it
+  // the user would land on a blank login page with no explanation.
   const callbackErrorCode = searchParams.get("error");
   const callbackError = callbackErrorCode
     ? CALLBACK_ERROR_MESSAGES[callbackErrorCode] ?? decodeURIComponent(callbackErrorCode)
@@ -50,15 +50,12 @@ function LoginPageInner() {
         body: JSON.stringify({ invite }),
       });
     } catch {
-      // Non-fatal — gallery/builder will still work, just without a
-      // workspace until this succeeds on a later visit.
+      // Non-fatal — gallery/builder still work, just without a workspace
+      // until this succeeds on a later visit.
     }
-    // A full navigation, not router.push(): tried push()+refresh() first,
-    // but Next's client-side router cache still reuse the root layout's
-    // previous (signed-out) render in testing — the nav kept incorrectly
-    // showing "Sign in" right after a real sign-in. Sign-in is a rare,
-    // one-time action, so the cost of a full page load here is negligible
-    // next to actually being reliable.
+    // A full navigation, not router.push(): push()+refresh() reused the root
+    // layout's previous (signed-out) render in testing. Sign-in is a rare,
+    // one-time action; a full page load is simply reliable.
     window.location.href = "/gallery";
   }
 
@@ -77,11 +74,8 @@ function LoginPageInner() {
         if (error) {
           setError(error.message);
         } else if (data.session) {
-          // Email confirmation is off for this project — signed in immediately.
           await afterSignedIn();
         } else {
-          // Confirmation required — they'll click a link that lands on
-          // /auth/callback, which does the same workspace-bootstrap step.
           setConfirmSent(true);
         }
       } else {
@@ -100,7 +94,6 @@ function LoginPageInner() {
     setError(null);
     const redirectTo = new URL("/auth/callback", window.location.origin);
     if (invite) redirectTo.searchParams.set("invite", invite);
-
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
@@ -109,107 +102,92 @@ function LoginPageInner() {
       if (error) setError(error.message);
       else setSent(true);
     } catch (err) {
-      // A rejected fetch (bad Supabase URL, network failure, ...) throws
-      // instead of returning {error} — without this, clicking the button
-      // would silently do nothing.
+      // A rejected fetch throws instead of returning {error} — without this
+      // the button would silently do nothing.
       setError(err instanceof Error ? err.message : "Couldn't reach Supabase.");
     }
   }
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col gap-4 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">
-          {mode === "signup" ? "Create account" : "Sign in"}
+    <div className="relative grid min-h-[70vh] place-items-center overflow-hidden py-16">
+      <div className="auth-orbit" aria-hidden="true" />
+      <section className="relative z-10 w-full max-w-sm">
+        <span className="font-mono text-[10px] uppercase text-signal">Account access</span>
+        <h1 className="mt-3 font-display text-3xl font-semibold">
+          {mode === "signup" ? "Make an account." : "Welcome back."}
         </h1>
         {invite && (
-          <p className="text-sm text-black/60 dark:text-white/60">
+          <p className="mt-3 text-xs text-muted-foreground">
             You&rsquo;ll join the workspace for invite code <code>{invite}</code>.
           </p>
         )}
-      </div>
 
-      {callbackError && (
-        <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-600">{callbackError}</p>
-      )}
+        {callbackError && <p className="mt-6 border-l-2 border-destructive pl-3 text-xs text-destructive">{callbackError}</p>}
 
-      {confirmSent ? (
-        <p className="text-sm">Check your email to confirm your account.</p>
-      ) : mode === "magiclink" ? (
-        sent ? (
-          <p className="text-sm">Check your email for a magic link.</p>
+        {confirmSent ? (
+          <p className="mt-10 text-sm">Check your email to confirm your account.</p>
+        ) : mode === "magiclink" ? (
+          sent ? (
+            <p className="mt-10 text-sm">Check your email for a magic link.</p>
+          ) : (
+            <div className="mt-10 space-y-5">
+              <label className="block text-xs font-medium">
+                Email
+                <input type="email" className="field mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </label>
+              <Button variant="signal" size="lg" className="w-full" onClick={sendMagicLink} disabled={!email}>
+                Send magic link
+              </Button>
+              <Button variant="quiet" size="sm" onClick={() => setMode("signin")}>
+                Use a password instead
+              </Button>
+            </div>
+          )
         ) : (
-          <>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
-            />
-            <button
-              onClick={sendMagicLink}
-              disabled={!email}
-              className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50 dark:bg-white dark:text-black"
+          <div className="mt-10 space-y-5">
+            <label className="block text-xs font-medium">
+              Email
+              <input type="email" className="field mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+            <label className="block text-xs font-medium">
+              Password
+              <input
+                type="password"
+                minLength={8}
+                className="field mt-1"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={mode === "signup" ? "8+ characters" : undefined}
+              />
+            </label>
+            <Button
+              variant="signal"
+              size="lg"
+              className="w-full"
+              onClick={submitPassword}
+              disabled={loading || !email || password.length < 8}
             >
-              Send magic link
-            </button>
-            <button
-              onClick={() => setMode("signin")}
-              className="w-fit text-xs text-black/50 underline dark:text-white/50"
-            >
-              Use a password instead
-            </button>
-          </>
-        )
-      ) : (
-        <>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={mode === "signup" ? "Choose a password (8+ characters)" : "Password"}
-            minLength={8}
-            className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
-          />
-          <button
-            onClick={submitPassword}
-            disabled={loading || !email || password.length < 8}
-            className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50 dark:bg-white dark:text-black"
-          >
-            {loading ? "…" : mode === "signup" ? "Create account" : "Sign in"}
-          </button>
+              {loading ? "Working…" : mode === "signup" ? "Create account" : "Sign in"}
+            </Button>
 
-          <div className="flex flex-col gap-1 text-xs">
-            <button
-              onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-              className="w-fit text-black/50 underline dark:text-white/50"
-            >
-              {mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account"}
-            </button>
-            {mode === "signin" && (
-              <Link href="/reset-password" className="w-fit text-black/50 underline dark:text-white/50">
-                Forgot password?
-              </Link>
-            )}
-            <button
-              onClick={() => setMode("magiclink")}
-              className="w-fit text-black/50 underline dark:text-white/50"
-            >
-              Use a magic link instead
-            </button>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <Button variant="quiet" size="sm" onClick={() => setMode(mode === "signup" ? "signin" : "signup")}>
+                {mode === "signup" ? "I have an account" : "Create an account"}
+              </Button>
+              {mode === "signin" && (
+                <Link href="/reset-password" className="rounded-full px-3 py-1.5 hover:bg-accent hover:text-foreground">
+                  Forgot password?
+                </Link>
+              )}
+              <Button variant="quiet" size="sm" onClick={() => setMode("magiclink")}>
+                Use a magic link
+              </Button>
+            </div>
           </div>
-        </>
-      )}
+        )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-6 text-xs leading-relaxed text-destructive">{error}</p>}
+      </section>
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { ButtonLink } from "@/components/ui/button";
 import { SignOutButton } from "./SignOutButton";
 
 /**
@@ -16,16 +16,19 @@ export async function AuthNavStatus() {
 
   if (!user) {
     return (
-      <Link href="/login" className="hover:underline hover:text-black dark:hover:text-white">
+      <ButtonLink href="/login" variant="quiet" size="sm">
         Sign in
-      </Link>
+      </ButtonLink>
     );
   }
 
   return (
-    <>
-      <span className="text-black/40 dark:text-white/40">{user.email}</span>
+    <div className="flex items-center gap-1">
+      <ButtonLink href="/settings" variant="quiet" size="sm">
+        Settings
+      </ButtonLink>
       <SignOutButton />
-    </>
+      <span className="hidden text-xs text-muted-foreground xl:inline">{user.email}</span>
+    </div>
   );
 }

@@ -26,14 +26,14 @@ export default async function AdminReportsPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-6">
       <div>
         <h1 className="text-xl font-semibold">Reports</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
+        <p className="text-sm text-muted-foreground">
           Everything reported on public tools, newest first.
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error.message}</p>}
+      {error && <p className="text-sm text-destructive">{error.message}</p>}
 
-      <ul className="flex flex-col divide-y divide-black/10 rounded-lg border border-black/10 dark:divide-white/10 dark:border-white/10">
+      <ul className="flex flex-col divide-y divide-black/10 rounded-lg border border-border">
         {(reports ?? []).map((r) => {
           const tool = r.tools as unknown as { name: string; visibility: string } | null;
           return (
@@ -42,13 +42,13 @@ export default async function AdminReportsPage() {
                 <a href={`/tools/${r.tool_id}`} className="font-medium hover:underline">
                   {tool?.name ?? r.tool_id}
                 </a>
-                <span className="flex items-center gap-3 text-xs text-black/50 dark:text-white/50">
+                <span className="flex items-center gap-3 text-xs text-muted-foreground">
                   {new Date(r.created_at).toLocaleString()}
                   <DismissReportButton reportId={r.id} />
                 </span>
               </div>
-              <p className="text-black/70 dark:text-white/70">{r.reason}</p>
-              <span className="text-xs text-black/40 dark:text-white/40">
+              <p className="text-foreground/80">{r.reason}</p>
+              <span className="text-xs text-muted-foreground">
                 tool currently: {tool?.visibility ?? "unknown/deleted"} · reporter:{" "}
                 {r.reporter_id ? "signed in" : "anonymous"}
               </span>
@@ -56,7 +56,7 @@ export default async function AdminReportsPage() {
           );
         })}
         {(reports ?? []).length === 0 && !error && (
-          <li className="px-4 py-6 text-sm text-black/50 dark:text-white/50">No reports.</li>
+          <li className="px-4 py-6 text-sm text-muted-foreground">No reports.</li>
         )}
       </ul>
     </div>

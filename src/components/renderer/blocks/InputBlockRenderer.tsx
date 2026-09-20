@@ -1,7 +1,7 @@
 import type { InputBlock } from "@/lib/schema";
 
 const fieldClass =
-  "rounded-md border border-black/15 px-3 py-2 dark:border-white/20 dark:bg-transparent";
+  "rounded-xl border border-border bg-card/60 px-3 py-2 text-sm outline-none transition-colors focus:border-foreground";
 
 export function InputBlockRenderer({
   block,
@@ -132,7 +132,7 @@ export function InputBlockRenderer({
               key={n}
               type="button"
               onClick={() => onChange(n)}
-              className={`text-2xl leading-none ${n <= rating ? "text-amber-500" : "text-black/20 dark:text-white/20"}`}
+              className={`text-2xl leading-none ${n <= rating ? "text-amber-500" : "text-border"}`}
               aria-label={`${n} star${n > 1 ? "s" : ""}`}
             >
               ★

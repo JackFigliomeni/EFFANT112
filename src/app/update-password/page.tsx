@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export default function UpdatePasswordPage() {
 
   if (!hasSession) {
     return (
-      <div className="mx-auto max-w-sm p-6 text-sm">
+      <div className="mx-auto max-w-sm py-24 text-sm">
         This reset link is invalid or expired.{" "}
         <a href="/reset-password" className="underline">
           Request a new one
@@ -55,30 +56,30 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col gap-4 p-6">
-      <h1 className="text-xl font-semibold">Set a new password</h1>
+    <div className="mx-auto w-full max-w-sm py-20">
+      <span className="font-mono text-[10px] uppercase text-signal">Account access</span>
+      <h1 className="mt-3 font-display text-3xl font-semibold">Set a new password.</h1>
 
       {done ? (
-        <p className="text-sm">Password updated — redirecting…</p>
+        <p className="mt-10 text-sm">Password updated. Taking you to your workspace…</p>
       ) : (
-        <>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="New password (8+ characters)"
-            minLength={8}
-            className="rounded-md border border-black/15 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
-          />
-          <button
-            onClick={save}
-            disabled={saving || password.length < 8}
-            className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:opacity-50 dark:bg-white dark:text-black"
-          >
-            {saving ? "Saving…" : "Update password"}
-          </button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-        </>
+        <div className="mt-10 space-y-5">
+          <label className="block text-xs font-medium">
+            New password
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="8+ characters"
+              minLength={8}
+              className="field mt-1"
+            />
+          </label>
+          <Button variant="signal" size="lg" className="w-full" onClick={save} disabled={saving || password.length < 8}>
+            {saving ? "Saving…" : "Save password"}
+          </Button>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
       )}
     </div>
   );
