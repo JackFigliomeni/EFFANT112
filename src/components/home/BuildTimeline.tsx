@@ -100,9 +100,9 @@ export function BuildTimeline() {
       {/* the spine: faint track + a colored fill that follows your scroll */}
       <div className="absolute bottom-0 left-4 top-0 w-px -translate-x-1/2 bg-border md:left-1/2" aria-hidden="true" />
       <div
-        className="absolute left-4 top-0 w-[2px] -translate-x-1/2 md:left-1/2"
+        className="absolute bottom-0 left-4 top-0 w-[2px] -translate-x-1/2 origin-top will-change-transform md:left-1/2"
         style={{
-          height: "calc(var(--p) * 100%)",
+          transform: "scaleY(var(--p))",
           background: "linear-gradient(to bottom, var(--signal), var(--cool), var(--fresh))",
         }}
         aria-hidden="true"
@@ -127,7 +127,7 @@ export function BuildTimeline() {
             <span
               aria-hidden="true"
               className={`timeline-branch absolute top-1/2 hidden h-px bg-foreground/25 md:block ${
-                contentLeft ? "right-1/2 mr-2 w-[20%]" : "left-1/2 ml-2 w-[20%]"
+                contentLeft ? "right-1/2 mr-2 w-20" : "left-1/2 ml-2 w-20"
               }`}
               style={{ ["--branch-origin" as string]: contentLeft ? "right" : "left" }}
             />

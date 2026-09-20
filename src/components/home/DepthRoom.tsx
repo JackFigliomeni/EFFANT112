@@ -3,180 +3,136 @@
 import { useEffect, useRef } from "react";
 
 /**
- * The home page's background: an empty, softly lit white room that extends
- * away from the screen, with bubbles floating at real depth inside it. As
- * you scroll, the camera moves forward through the room — the floor grid
- * slides toward you and bubbles drift past — so the whole page reads as one
- * continuous space instead of stacked flat sections.
+ * The home page's background: an empty white room receding away from the
+ * screen, with bubbles at different depths.
  *
- * Real CSS 3D (perspective + translateZ), not layered parallax. Only one
- * custom property (--cam) changes on scroll; everything else is GPU
- * transforms. The room's planes are periodic textures, so instead of
- * moving them the full distance (which would need enormous planes) they
- * shift by `cam mod period` — visually identical, and never runs out.
+ * Built to be cheap. The room is one static SVG (painted once, never
+ * animated) and the bubbles are plain elements that only ever change
+ * `transform` — the one property the browser can move without repainting.
+ * The earlier version used huge 3D-transformed planes and re-styled every
+ * bubble on each scroll event, which made scrolling lag and flicker.
  */
 
-// Small deterministic generator — random-looking placement that's identical
-// on server and client (Math.random would cause a hydration mismatch).
-function seeded(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s * 1664525 + 1013904223) % 4294967296;
-    return s / 4294967296;
-  };
+const VP = { x: 50, y: 40 }; // vanishing point, in the SVG's 0-100 space
+
+function RoomLines() {
+  const lines: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  // far-end rectangle
+  const rx = 8;
+  const ry = 6;
+  const corners = [
+    [VP.x - rx, VP.y - ry],
+    [VP.x + rx, VP.y - ry],
+    [VP.x + rx, VP.y + ry],
+    [VP.x - rx, VP.y + ry],
+  ];
+  const outer = [
+    [-4, -6],
+    [104, -6],
+    [104, 106],
+    [-4, 106],
+  ];
+  // the four room corners running off toward the viewer
+  corners.forEach(([x, y], i) => lines.push({ x1: x, y1: y, x2: outer[i][0], y2: outer[i][1] }));
+  // floor: lines fanning from the far end to the bottom edge
+  for (let i = -6; i <= 6; i++) lines.push({ x1: VP.x + i * 2.2, y1: VP.y + ry, x2: VP.x + i * 20, y2: 106 });
+  // floor: cross lines, spaced so they crowd together with distance
+  for (let k = 1; k <= 7; k++) {
+    const t = (k / 7) ** 2;
+    const y = VP.y + ry + t * (106 - VP.y - ry);
+    const half = rx + t * (60 - rx);
+    lines.push({ x1: VP.x - half, y1: y, x2: VP.x + half, y2: y });
+  }
+  return (
+    <>
+      {lines.map((l, i) => (
+        <line key={i} {...l} stroke="oklch(0.8 0.02 255)" strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      ))}
+      <rect x={VP.x - rx} y={VP.y - ry} width={rx * 2} height={ry * 2} fill="none" stroke="oklch(0.8 0.02 255)" strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+    </>
+  );
 }
 
 const TONES = ["signal", "cool", "fresh"] as const;
 
-const BUBBLES = (() => {
-  const rand = seeded(11);
-  return Array.from({ length: 28 }, (_, i) => {
-    const side = i % 2 === 0 ? -1 : 1;
-    const z = -(520 + i * 430 + Math.round(rand() * 140));
-    const size = Math.round(170 + rand() * 300);
-    // How much perspective shrinks things at this depth. Used to keep every
-    // bubble out of the middle column where the text sits, at any depth.
-    const scale = 900 / (900 - z);
-    const minScreen = 380 + (size * scale) / 2;
-    return {
-      x: Math.round((side * (minScreen + rand() * 380)) / scale),
-      y: Math.round((rand() - 0.5) * 700),
-      z,
-      size,
-      tone: TONES[i % 3],
-      delay: -Math.round(rand() * 12),
-    };
-  });
-})();
-
-const FLOOR_LENGTH = 13000;
-const ROOM_HALF_WIDTH = 900;
-const ROOM_HALF_HEIGHT = 380;
-const NEAR = 1200; // planes start this far in front of z=0 so nothing gaps at the screen edge
+// Nearer bubbles are larger and move faster as you scroll; that difference in
+// speed is what reads as depth. Positions are chosen to stay off the middle
+// column where the text sits.
+const BUBBLES = [
+  { top: 4, left: "4%", size: 210, speed: 0.34, tone: 0 },
+  { top: 9, left: "84%", size: 150, speed: 0.2, tone: 1 },
+  { top: 24, left: "-3%", size: 120, speed: 0.12, tone: 2 },
+  { top: 30, left: "90%", size: 260, speed: 0.4, tone: 0 },
+  { top: 44, left: "6%", size: 170, speed: 0.22, tone: 1 },
+  { top: 52, left: "82%", size: 110, speed: 0.1, tone: 2 },
+  { top: 64, left: "-2%", size: 240, speed: 0.36, tone: 0 },
+  { top: 72, left: "88%", size: 150, speed: 0.18, tone: 1 },
+  { top: 84, left: "10%", size: 130, speed: 0.14, tone: 2 },
+  { top: 92, left: "80%", size: 220, speed: 0.3, tone: 0 },
+];
 
 export function DepthRoom() {
-  const roomRef = useRef<HTMLDivElement>(null);
+  const bubbleRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let raf = 0;
-    function onScroll() {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        roomRef.current?.style.setProperty("--cam", String(Math.round(window.scrollY * 1.5)));
+    function apply() {
+      raf = 0;
+      const y = window.scrollY;
+      BUBBLES.forEach((b, i) => {
+        const el = bubbleRefs.current[i];
+        if (el) el.style.transform = `translate3d(0, ${Math.round(-y * b.speed)}px, 0)`;
       });
     }
+    function onScroll() {
+      if (!raf) raf = requestAnimationFrame(apply);
+    }
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
+    apply();
     return () => {
       window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
+      if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 
   return (
-    <div
-      ref={roomRef}
-      aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
-      style={{ ["--cam" as string]: 0 }}
-    >
-      {/* the room itself */}
-      <div className="absolute inset-0" style={{ perspective: "900px", perspectiveOrigin: "50% 42%" }}>
-      <div className="absolute inset-0" style={{ transformStyle: "preserve-3d" }}>
-        {/* floor: a receding grid that slides toward the viewer */}
+    <>
+      {/* the room: static, never repainted */}
+      <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
+        <svg className="size-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {/* surfaces, lit softly toward the far end */}
+          <polygon points={`${VP.x - 8},${VP.y + 6} ${VP.x + 8},${VP.y + 6} 104,106 -4,106`} fill="oklch(0.93 0.012 255)" fillOpacity="0.7" />
+          <polygon points={`${VP.x - 8},${VP.y - 6} ${VP.x + 8},${VP.y - 6} 104,-6 -4,-6`} fill="oklch(1 0 0)" fillOpacity="0.55" />
+          <polygon points={`${VP.x - 8},${VP.y - 6} ${VP.x - 8},${VP.y + 6} -4,106 -4,-6`} fill="oklch(0.97 0.006 255)" fillOpacity="0.6" />
+          <polygon points={`${VP.x + 8},${VP.y - 6} ${VP.x + 8},${VP.y + 6} 104,106 104,-6`} fill="oklch(0.97 0.006 255)" fillOpacity="0.6" />
+          <RoomLines />
+        </svg>
+        {/* the far end is bright, so everything recedes into light */}
         <div
-          className="absolute will-change-transform"
+          className="absolute inset-0"
           style={{
-            left: `calc(50% - ${ROOM_HALF_WIDTH * 2}px)`,
-            width: ROOM_HALF_WIDTH * 4,
-            height: FLOOR_LENGTH,
-            top: `calc(50% + ${ROOM_HALF_HEIGHT}px - ${FLOOR_LENGTH}px)`,
-            transformOrigin: "50% 100%",
-            transform: `translateZ(calc(${NEAR}px + mod(var(--cam), 200) * 1px)) rotateX(90deg)`,
-            backgroundImage:
-              "linear-gradient(to right, oklch(0.8 0.02 255 / .55) 1px, transparent 1px), linear-gradient(to bottom, oklch(0.8 0.02 255 / .55) 1px, transparent 1px)",
-            backgroundSize: "200px 200px",
-            maskImage: "linear-gradient(to bottom, transparent 0%, black 55%)",
-            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 55%)",
+            background:
+              "radial-gradient(ellipse 50% 42% at 50% 40%, oklch(0.995 0.004 255 / .95) 0%, oklch(0.99 0.005 255 / .6) 35%, transparent 80%)",
           }}
         />
-        {/* ceiling: same room, lit from above, no grid */}
-        <div
-          className="absolute"
-          style={{
-            left: `calc(50% - ${ROOM_HALF_WIDTH * 2}px)`,
-            width: ROOM_HALF_WIDTH * 4,
-            height: FLOOR_LENGTH,
-            top: `calc(50% - ${ROOM_HALF_HEIGHT}px)`,
-            transformOrigin: "50% 0%",
-            transform: `translateZ(${NEAR}px) rotateX(-90deg)`,
-            background: "linear-gradient(to top, oklch(1 0 0 / .0), oklch(1 0 0 / .55))",
-            maskImage: "linear-gradient(to top, transparent 0%, black 60%)",
-            WebkitMaskImage: "linear-gradient(to top, transparent 0%, black 60%)",
-          }}
-        />
-        {/* left + right walls with faint panel seams that slide past */}
-        {([-1, 1] as const).map((side) => (
+      </div>
+
+      {/* bubbles spread over the whole page, each drifting at its own rate */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+        {BUBBLES.map((b, i) => (
           <div
-            key={side}
-            className="absolute will-change-transform"
-            style={{
-              width: FLOOR_LENGTH,
-              height: ROOM_HALF_HEIGHT * 2,
-              top: `calc(50% - ${ROOM_HALF_HEIGHT}px)`,
-              left: side === -1 ? `calc(50% - ${ROOM_HALF_WIDTH}px)` : `calc(50% + ${ROOM_HALF_WIDTH}px - ${FLOOR_LENGTH}px)`,
-              transformOrigin: side === -1 ? "0% 50%" : "100% 50%",
-              transform: `translateZ(calc(${NEAR}px + mod(var(--cam), 700) * 1px)) rotateY(${side === -1 ? 90 : -90}deg)`,
-              backgroundImage:
-                "repeating-linear-gradient(to right, oklch(0.8 0.02 255 / .45) 0 1px, transparent 1px 700px), linear-gradient(to bottom, oklch(1 0 0 / .35), transparent 40%, transparent 60%, oklch(1 0 0 / .35))",
-              maskImage: `linear-gradient(to ${side === -1 ? "left" : "right"}, transparent 0%, black 55%)`,
-              WebkitMaskImage: `linear-gradient(to ${side === -1 ? "left" : "right"}, transparent 0%, black 55%)`,
+            key={i}
+            ref={(el) => {
+              bubbleRefs.current[i] = el;
             }}
-          />
+            className="absolute will-change-transform"
+            style={{ top: `${b.top}%`, left: b.left, width: b.size, height: b.size }}
+          >
+            <span className={`block size-full rounded-full room-bubble-${TONES[b.tone]}`} />
+          </div>
         ))}
-
       </div>
-      </div>
-
-      {/* bubbles, each at its own depth; they fly past as the camera advances.
-          Same camera as the room but a separate 3D layer, so a bubble never
-          intersects a wall or the ceiling (which slices it flat). */}
-      <div className="absolute inset-0" style={{ perspective: "900px", perspectiveOrigin: "50% 42%" }}>
-        <div className="absolute inset-0" style={{ transformStyle: "preserve-3d", transform: "translateZ(calc(var(--cam) * 1px))" }}>
-          {BUBBLES.map((b, i) => (
-            <div
-              key={i}
-              className="room-bubble"
-              style={{
-                width: b.size,
-                height: b.size,
-                marginLeft: -b.size / 2,
-                marginTop: -b.size / 2,
-                transform: `translate3d(${b.x}px, ${b.y}px, ${b.z}px)`,
-                // fades out before it reaches the camera, and fades in out of the far fog
-                ["--d" as string]: `calc(${b.z} + var(--cam))`,
-                opacity:
-                  "min(clamp(0, calc((var(--d) * -1 - 140) / 520), 1), clamp(0, calc((9500 + var(--d)) / 4500), 1))",
-              }}
-            >
-              <span
-                className={`block size-full rounded-full room-bubble-${b.tone}`}
-                style={{ animation: "room-drift 14s ease-in-out infinite", animationDelay: `${b.delay}s` }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* the far end of the room: bright, so everything recedes into light */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 52% 44% at 50% 42%, oklch(0.995 0.004 255 / .95) 0%, oklch(0.99 0.005 255 / .7) 30%, transparent 78%)",
-        }}
-      />
-    </div>
+    </>
   );
 }

@@ -83,7 +83,7 @@ export function ShareMenu({
         {label}
       </Button>
       {open && (
-        <div className="animate-reveal absolute right-0 top-full z-50 mt-2 w-52 rounded-[20px] border border-border bg-card/95 p-2 shadow-soft backdrop-blur-xl">
+        <div className="animate-reveal absolute right-0 top-full z-50 mt-2 w-52 rounded-[20px] border border-border bg-card/95 p-2 shadow-soft">
           <button className={itemClass} onClick={copy}>
             {copied ? "Link copied" : "Copy link"}
           </button>

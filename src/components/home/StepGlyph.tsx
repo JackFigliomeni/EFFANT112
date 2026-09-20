@@ -12,7 +12,7 @@ export function StepGlyph({ kind }: { kind: StepGlyphKind }) {
           <rect x="10" y="30" width="100" height="60" rx="18" {...S} />
           <rect x="24" y="52" width="42" height="4" rx="2" fill="var(--foreground)" opacity=".7" />
           <rect x="24" y="64" width="64" height="4" rx="2" fill="var(--foreground)" opacity=".3" />
-          <rect x="72" y="49" width="4" height="10" rx="2" fill="var(--signal)" style={{ animation: "caret-blink 1.1s steps(1) infinite" }} />
+          <rect x="72" y="49" width="4" height="10" rx="2" fill="var(--signal)" />
         </>
       )}
       {kind === "draft" && (
@@ -24,7 +24,7 @@ export function StepGlyph({ kind }: { kind: StepGlyphKind }) {
             [92, 58, "var(--fresh)", 1.2],
             [70, 96, "var(--foreground)", 1.8],
           ].map(([x, y, c, d]) => (
-            <circle key={`${x}-${y}`} cx={x as number} cy={y as number} r="6" fill={c as string} style={{ animation: "node-pulse 3s ease-in-out infinite", animationDelay: `${d}s`, transformOrigin: `${x}px ${y}px` }} />
+            <circle key={`${x}-${y}`} cx={x as number} cy={y as number} r="6" fill={c as string} />
           ))}
         </>
       )}
@@ -43,7 +43,7 @@ export function StepGlyph({ kind }: { kind: StepGlyphKind }) {
           {[0, 90, 180, 270].map((a) => (
             <circle key={a} cx={60 + 42 * Math.cos((a * Math.PI) / 180)} cy={60 + 42 * Math.sin((a * Math.PI) / 180)} r="3.5" fill="var(--border)" />
           ))}
-          <g style={{ transformOrigin: "60px 60px", animation: "spin-slow 9s linear infinite" }}>
+          <g transform="rotate(35 60 60)">
             <line x1="60" y1="60" x2="60" y2="24" stroke="var(--signal)" strokeWidth="2.4" strokeLinecap="round" />
             <circle cx="60" cy="22" r="5" fill="var(--signal)" />
           </g>
@@ -60,7 +60,7 @@ export function StepGlyph({ kind }: { kind: StepGlyphKind }) {
       {kind === "publish" && (
         <>
           {[18, 34, 50].map((r, i) => (
-            <circle key={r} cx="60" cy="60" r={r} {...S} opacity={1 - i * 0.25} style={{ animation: "node-pulse 3.4s ease-in-out infinite", animationDelay: `${i * 0.5}s`, transformOrigin: "60px 60px" }} />
+            <circle key={r} cx="60" cy="60" r={r} {...S} opacity={1 - i * 0.25} />
           ))}
           <circle cx="60" cy="60" r="7" fill="var(--signal)" />
           <circle cx="98" cy="30" r="4" fill="var(--cool)" />

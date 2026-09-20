@@ -6,8 +6,8 @@ export default function Home() {
   return (
     <>
       <div className="relative flex min-h-[78vh] flex-col items-center justify-center py-16 text-center">
-        <h1 className="relative z-10 max-w-2xl text-balance font-display text-4xl font-semibold leading-[1.06] sm:text-6xl">
-          Describe any tool. Watch it get built.
+        <h1 className="relative z-10 max-w-2xl text-balance font-display text-4xl font-semibold leading-[1.06] sm:text-7xl">
+          MiniWare
         </h1>
         <p className="relative z-30 mt-6 max-w-[46ch] text-pretty text-sm leading-relaxed text-foreground/70 sm:text-base">
           Not a fixed set of templates. Say what you need and it becomes a working tool, then keep it

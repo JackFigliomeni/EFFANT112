@@ -88,7 +88,7 @@ export default function GeneratePage() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe the tool you want…"
-            className="min-h-[15rem] w-full flex-1 resize-none rounded-[20px] border border-border bg-card/70 p-5 text-lg leading-relaxed shadow-soft backdrop-blur-xl outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground"
+            className="min-h-[15rem] w-full flex-1 resize-none rounded-[20px] border border-border bg-card/70 p-5 text-lg leading-relaxed shadow-soft outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground"
           />
           <div className="mt-4 flex flex-wrap gap-2">
             {EXAMPLE_PROMPTS.map((example) => (

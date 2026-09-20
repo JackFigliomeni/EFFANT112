@@ -10,7 +10,7 @@ const VARIANTS = {
   signal: "rounded-full bg-signal text-signal-foreground shadow-soft hover:bg-signal/90 active:scale-[0.98]",
   ink: "rounded-full bg-foreground text-background shadow-soft hover:bg-foreground/90",
   quiet: "rounded-full bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
-  glass: "rounded-full border border-border bg-card/65 text-foreground shadow-soft backdrop-blur-xl hover:bg-card",
+  glass: "rounded-full border border-border bg-card/90 text-foreground shadow-soft hover:bg-card",
   destructive: "rounded-full bg-destructive text-destructive-foreground shadow-soft hover:bg-destructive/90",
 } as const;
 

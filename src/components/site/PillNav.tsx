@@ -21,7 +21,7 @@ export function PillNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="hidden items-center gap-1 rounded-full border border-border/70 bg-card/55 p-1 shadow-soft backdrop-blur-xl sm:flex"
+      className="hidden items-center gap-1 rounded-full border border-border/70 bg-card/55 p-1 shadow-soft sm:flex"
       aria-label="Main navigation"
     >
       {NAV_ITEMS.map((item) => (
@@ -45,7 +45,7 @@ export function MobileNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="fixed inset-x-4 bottom-4 z-50 flex items-center gap-1 overflow-x-auto rounded-full border border-border/80 bg-card/90 p-1 shadow-soft backdrop-blur-xl sm:hidden"
+      className="fixed inset-x-4 bottom-4 z-50 flex items-center gap-1 overflow-x-auto rounded-full border border-border/80 bg-card/90 p-1 shadow-soft sm:hidden"
       aria-label="Mobile navigation"
     >
       {NAV_ITEMS.map((item) => (

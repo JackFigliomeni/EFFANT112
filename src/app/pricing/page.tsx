@@ -58,7 +58,7 @@ function PricingInner() {
       )}
 
       <div className="mt-12 grid gap-6 md:grid-cols-2">
-        <div className="flex flex-col gap-4 rounded-[20px] border border-border bg-card/70 p-7 shadow-soft backdrop-blur-xl">
+        <div className="flex flex-col gap-4 rounded-[20px] border border-border bg-card/70 p-7 shadow-soft">
           <h2 className="text-lg font-semibold">Free</h2>
           <p className="text-3xl font-semibold">$0</p>
           <ul className="flex flex-col text-sm text-muted-foreground [&>li]:border-t [&>li]:border-border [&>li]:py-2.5">
@@ -73,7 +73,7 @@ function PricingInner() {
           {plan === "free" && <span className="mt-auto font-mono text-[9px] uppercase text-muted-foreground">Your current plan</span>}
         </div>
 
-        <div className="flex flex-col gap-4 rounded-[20px] border border-signal/40 bg-card/80 p-7 shadow-soft backdrop-blur-xl">
+        <div className="flex flex-col gap-4 rounded-[20px] border border-signal/40 bg-card/80 p-7 shadow-soft">
           <h2 className="text-lg font-semibold">Pro</h2>
           <p className="text-3xl font-semibold">{PRO_PRICE_DISPLAY}</p>
           <ul className="flex flex-col text-sm text-muted-foreground [&>li]:border-t [&>li]:border-border [&>li]:py-2.5">

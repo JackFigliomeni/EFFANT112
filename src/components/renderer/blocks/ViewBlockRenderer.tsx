@@ -67,7 +67,7 @@ export function ViewBlockRenderer({
 }) {
   if (block.display === "count") {
     return (
-      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
+      <div className="rounded-lg border border-border bg-card/70 p-4">
         <div className="text-3xl font-semibold">{rows.length}</div>
         <div className="text-sm text-muted-foreground">records in &ldquo;{block.source}&rdquo;</div>
       </div>
@@ -83,7 +83,7 @@ export function ViewBlockRenderer({
           ? values.reduce((a, b) => a + b, 0) / values.length
           : 0;
     return (
-      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
+      <div className="rounded-lg border border-border bg-card/70 p-4">
         <div className="text-3xl font-semibold">{Number.isInteger(result) ? result : result.toFixed(2)}</div>
         <div className="text-sm text-muted-foreground">
           {block.display} of &ldquo;{block.field}&rdquo; across {values.length} record{values.length === 1 ? "" : "s"}
@@ -95,7 +95,7 @@ export function ViewBlockRenderer({
   if (block.display === "latest") {
     const latest = rows[0]; // rows already ordered newest-first by the caller
     return (
-      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
+      <div className="rounded-lg border border-border bg-card/70 p-4">
         {latest ? (
           <ul className="text-sm">
             {Object.entries(latest.data).map(([k, v]) => (
@@ -126,7 +126,7 @@ export function ViewBlockRenderer({
     const width = points.length * (barWidth + gap) || barWidth;
 
     return (
-      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
+      <div className="rounded-lg border border-border bg-card/70 p-4">
         {points.length === 0 ? (
           <p className="text-sm text-muted-foreground">No records yet.</p>
         ) : (
@@ -175,7 +175,7 @@ export function ViewBlockRenderer({
     ];
 
     return (
-      <div className="rounded-lg border border-border bg-card/70 p-4 backdrop-blur-xl">
+      <div className="rounded-lg border border-border bg-card/70 p-4">
         <div className="mb-2 text-sm font-medium">
           {firstDay.toLocaleString(undefined, { month: "long", year: "numeric" })}
         </div>
