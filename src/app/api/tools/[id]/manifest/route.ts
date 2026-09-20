@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DEFAULT_THEME_COLOR, isMissingColumn } from "@/lib/toolColumns";
 
 export const runtime = "nodejs";
 
@@ -12,9 +13,12 @@ export const runtime = "nodejs";
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const admin = createAdminClient();
-  const { data: tool } = await admin.from("tools").select("name, theme_color").eq("id", id).maybeSingle();
+  let { data: tool, error } = await admin.from("tools").select("name, theme_color").eq("id", id).maybeSingle();
+  if (isMissingColumn(error)) {
+    ({ data: tool } = await admin.from("tools").select("name").eq("id", id).maybeSingle());
+  }
   const name = tool?.name ?? "Tool";
-  const themeColor = tool?.theme_color ?? "#171717";
+  const themeColor = tool?.theme_color ?? DEFAULT_THEME_COLOR;
 
   const manifest = {
     name,

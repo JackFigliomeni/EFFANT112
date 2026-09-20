@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ShareButton } from "@/components/ShareButton";
 import type { Visibility } from "@/lib/schema";
+import { isMissingColumn } from "@/lib/toolColumns";
 
 export const dynamic = "force-dynamic";
 
@@ -45,16 +46,23 @@ export default function PublishPage() {
         return;
       }
       setSignedIn(true);
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("tools")
         .select("id, name, visibility, theme_color")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false });
+      if (isMissingColumn(error)) {
+        ({ data, error } = await supabase
+          .from("tools")
+          .select("id, name, visibility")
+          .eq("owner_id", user.id)
+          .order("created_at", { ascending: false }));
+      }
       if (error) {
         setLoadError(error.message);
         return;
       }
-      setTools(data ?? []);
+      setTools((data ?? []) as OwnedTool[]);
     }
     load();
   }, [supabase]);

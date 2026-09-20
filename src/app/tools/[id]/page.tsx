@@ -5,6 +5,7 @@ import { validateToolSchema } from "@/lib/schema";
 import { ToolRenderer } from "@/components/renderer/ToolRenderer";
 import { ReportButton } from "@/components/ReportButton";
 import { ToolServiceWorker } from "@/components/ToolServiceWorker";
+import { BASE_TOOL_COLUMNS, EXTRA_TOOL_COLUMNS, isMissingColumn } from "@/lib/toolColumns";
 
 /**
  * Makes a tool "Add to Home Screen"-installable as its own standalone app —
@@ -38,11 +39,14 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: tool, error } = await supabase
+  let { data: tool, error } = await supabase
     .from("tools")
-    .select("id, name, schema, owner_id, visibility, theme_color")
+    .select(`${BASE_TOOL_COLUMNS}, ${EXTRA_TOOL_COLUMNS}`)
     .eq("id", id)
     .single();
+  if (isMissingColumn(error)) {
+    ({ data: tool, error } = await supabase.from("tools").select(BASE_TOOL_COLUMNS).eq("id", id).single());
+  }
 
   if (error || !tool) {
     return (

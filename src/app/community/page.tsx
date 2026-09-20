@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ShareButton } from "@/components/ShareButton";
+import { isMissingColumn } from "@/lib/toolColumns";
 
 export const dynamic = "force-dynamic";
 
@@ -29,17 +30,25 @@ export default function CommunityPage() {
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("tools")
         .select("id, name, created_at, theme_color")
         .eq("visibility", "public")
         .order("created_at", { ascending: false })
         .limit(100);
+      if (isMissingColumn(error)) {
+        ({ data, error } = await supabase
+          .from("tools")
+          .select("id, name, created_at")
+          .eq("visibility", "public")
+          .order("created_at", { ascending: false })
+          .limit(100));
+      }
       if (error) {
         setError(error.message);
         return;
       }
-      setTools(data ?? []);
+      setTools((data ?? []) as CommunityTool[]);
     }
     load();
   }, [supabase]);

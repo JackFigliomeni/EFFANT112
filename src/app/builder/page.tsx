@@ -15,6 +15,7 @@ import {
 import { BlockEditor } from "@/components/builder/BlockEditor";
 import { ToolRenderer } from "@/components/renderer/ToolRenderer";
 import { isPlan, type Plan } from "@/lib/plans";
+import { isMissingColumn } from "@/lib/toolColumns";
 
 /** sessionStorage key Phase 3's prompt-to-schema page uses to hand off a
  * freshly generated schema for editing here. */
@@ -79,13 +80,20 @@ function BuilderPageInner() {
     async function load() {
       if (editingId) {
         try {
-          const { data, error } = await supabase
+          let { data, error } = await supabase
             .from("tools")
             .select("id, name, schema, visibility, theme_color")
             .eq("id", editingId)
             .single();
-          if (error) {
-            setStatus(`Couldn't load tool: ${error.message}`);
+          if (isMissingColumn(error)) {
+            ({ data, error } = await supabase
+              .from("tools")
+              .select("id, name, schema, visibility")
+              .eq("id", editingId)
+              .single());
+          }
+          if (error || !data) {
+            setStatus(`Couldn't load tool: ${error?.message ?? "not found"}`);
             return;
           }
           setName(data.name);
@@ -149,12 +157,20 @@ function BuilderPageInner() {
         // (e.g. RLS silently blocking a non-owner's edit of a public tool)
         // otherwise returns no error and no data — without checking `data`,
         // this would report "Saved." even though nothing changed.
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from("tools")
           .update({ name, schema, visibility, theme_color: themeColor })
           .eq("id", toolId)
           .select("id")
           .single();
+        if (isMissingColumn(error)) {
+          ({ data, error } = await supabase
+            .from("tools")
+            .update({ name, schema, visibility })
+            .eq("id", toolId)
+            .select("id")
+            .single());
+        }
         if (error || !data) {
           setStatus(
             error?.code === "PGRST116"
@@ -165,20 +181,23 @@ function BuilderPageInner() {
           setStatus("Saved.");
         }
       } else {
-        const { data, error } = await supabase
+        const base = {
+          name,
+          schema,
+          visibility,
+          owner_id: owner?.userId ?? null,
+          workspace_id: owner?.workspaceId ?? null,
+        };
+        let { data, error } = await supabase
           .from("tools")
-          .insert({
-            name,
-            schema,
-            visibility,
-            theme_color: themeColor,
-            owner_id: owner?.userId ?? null,
-            workspace_id: owner?.workspaceId ?? null,
-          })
+          .insert({ ...base, theme_color: themeColor })
           .select("id")
           .single();
-        if (error) {
-          setStatus(`Save failed: ${error.message}`);
+        if (isMissingColumn(error)) {
+          ({ data, error } = await supabase.from("tools").insert(base).select("id").single());
+        }
+        if (error || !data) {
+          setStatus(`Save failed: ${error?.message ?? "unknown error"}`);
         } else {
           setStatus("Created.");
           setToolId(data.id);

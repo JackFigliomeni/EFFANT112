@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isMissingColumn } from "@/lib/toolColumns";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const size = Number(new URL(request.url).searchParams.get("size")) || 512;
 
   const admin = createAdminClient();
-  const { data: tool } = await admin.from("tools").select("name, theme_color").eq("id", id).maybeSingle();
+  let { data: tool, error } = await admin.from("tools").select("name, theme_color").eq("id", id).maybeSingle();
+  if (isMissingColumn(error)) {
+    ({ data: tool } = await admin.from("tools").select("name").eq("id", id).maybeSingle());
+  }
   const name = tool?.name ?? "Tool";
   // "#171717" is the column's default (unset) — fall back to the varied
   // by-id palette so un-customized tools don't all end up the same near-black.
