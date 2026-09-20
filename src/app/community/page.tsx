@@ -30,20 +30,21 @@ export default function CommunityPage() {
 
   useEffect(() => {
     async function load() {
-      let { data, error } = await supabase
+      let result = await supabase
         .from("tools")
         .select("id, name, created_at, theme_color")
         .eq("visibility", "public")
         .order("created_at", { ascending: false })
         .limit(100);
-      if (isMissingColumn(error)) {
-        ({ data, error } = await supabase
+      if (isMissingColumn(result.error)) {
+        result = (await supabase
           .from("tools")
           .select("id, name, created_at")
           .eq("visibility", "public")
           .order("created_at", { ascending: false })
-          .limit(100));
+          .limit(100)) as typeof result;
       }
+      const { data, error } = result;
       if (error) {
         setError(error.message);
         return;

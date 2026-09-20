@@ -46,18 +46,19 @@ export default function PublishPage() {
         return;
       }
       setSignedIn(true);
-      let { data, error } = await supabase
+      let result = await supabase
         .from("tools")
         .select("id, name, visibility, theme_color")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false });
-      if (isMissingColumn(error)) {
-        ({ data, error } = await supabase
+      if (isMissingColumn(result.error)) {
+        result = (await supabase
           .from("tools")
           .select("id, name, visibility")
           .eq("owner_id", user.id)
-          .order("created_at", { ascending: false }));
+          .order("created_at", { ascending: false })) as typeof result;
       }
+      const { data, error } = result;
       if (error) {
         setLoadError(error.message);
         return;
