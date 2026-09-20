@@ -108,6 +108,12 @@ export default function SettingsPage() {
             Upgrade to Pro
           </Link>
         )}
+        <p className="text-xs text-black/40 dark:text-white/40">
+          Billing questions?{" "}
+          <a href="mailto:billing@effant.tech" className="underline">
+            billing@effant.tech
+          </a>
+        </p>
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-red-600/30 p-4">

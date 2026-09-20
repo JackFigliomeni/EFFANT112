@@ -58,7 +58,11 @@ export default function TermsPage() {
           Settings
         </a>{" "}
         — it stays active through the end of the period you&rsquo;ve already paid for, then
-        doesn&rsquo;t renew. No cancellation fee, no need to contact us.
+        doesn&rsquo;t renew. No cancellation fee, no need to contact us. Billing questions:{" "}
+        <a href="mailto:billing@effant.tech" className="underline">
+          billing@effant.tech
+        </a>
+        .
       </p>
 
       <h2 className="font-semibold">Changes</h2>
