@@ -103,40 +103,71 @@ Claude-generated schemas can use the full variety, not just the original six.
 
 Free vs Pro is defined in one place, `src/lib/plans.ts`:
 
-| | Free | Pro ($9.99/month) |
+| | Free | Pro ($20/month) |
 |---|---|---|
 | Tools | 1 | Unlimited |
 | AI generations | 5/month | 100/month |
+| Automations | 3 manual test runs each, no daily cron | Up to 5, running daily |
 
 Tool limits are enforced in Postgres (migration 0012's `enforce_tool_limit`
 trigger, tightened to 1 free tool by migration 0013 — holds regardless of
 which client creates a tool). AI generation
 limits are enforced in `/api/generate-schema` two ways: a flat 10/hour abuse
-guard for everyone, and the real plan-based monthly quota above.
+guard for everyone, and the real plan-based monthly quota above. The Pro
+automation cap is enforced in Postgres too (migration 0014's
+`enforce_automation_limit` trigger) — a hard cap, not a monthly quota, since
+an automation runs indefinitely once created rather than resetting.
+Free-plan automations never run on the daily cron at all (see "Automation
+blocks" below); they're manual-only, tracked via each block's
+`testRunsUsed` field.
 
 **Setup** (needs your own Stripe account — sign up at
 [stripe.com](https://stripe.com)):
 
-1. **Create a Product + Price** for Pro ($9.99/month, recurring) in the Stripe
+1. **Create a Product + Price** for Pro ($20/month, recurring) in the Stripe
    Dashboard → Product catalog. Copy the **Price ID** (`price_...`) into
    `STRIPE_PRO_PRICE_ID`.
 2. **Get your secret key** — Developers → API keys → copy the **Secret key**
    (`sk_...`, use the *test mode* one while developing) into
    `STRIPE_SECRET_KEY`.
 3. **Set up the webhook** — Developers → Webhooks → Add endpoint, URL
-   `https://<your-domain>/api/stripe/webhook`, listening for
+   `https://www.<your-domain>/api/stripe/webhook` (the `www` canonical host,
+   not the bare apex — if your apex 301/307-redirects to `www` or vice versa,
+   Stripe does not follow that redirect when delivering webhooks, so the bare
+   domain silently never gets a single event), listening for
    `checkout.session.completed`, `customer.subscription.updated`, and
    `customer.subscription.deleted`. Copy the **signing secret** (`whsec_...`)
    into `STRIPE_WEBHOOK_SECRET`.
 4. **Get your Supabase service_role key** — Project Settings → API →
    `service_role` secret — into `SUPABASE_SERVICE_ROLE_KEY`. This is the one
-   key in this app that bypasses RLS entirely; it's used only in
-   `/api/stripe/webhook` (see `src/lib/supabase/admin.ts`) since a webhook
-   call has no logged-in user to scope a normal request to. Never expose it
+   key in this app that bypasses RLS entirely; it's used by `/api/stripe/webhook`
+   and `/api/cron/automations` (see `src/lib/supabase/admin.ts`) since neither
+   has a logged-in user to scope a normal request to. Never expose it
    client-side.
 
-All four env vars need setting in Vercel's project settings too, not just
-`.env.local`.
+All env vars need setting in Vercel's project settings too, not just
+`.env.local` — see `.env.example` for the full list, including `CRON_SECRET`
+(below).
+
+## Automation blocks
+
+Unlike `rule` (a passive, unenforced note — see "Known limitations" below),
+an `automation` block actually runs: given a target table and a plain-language
+prompt, it calls Claude (optionally with real web search) and inserts the
+result as a new record.
+
+- **Pro**: runs automatically once a day for every automation block, via
+  Vercel Cron hitting `/api/cron/automations` (schedule in `vercel.json`).
+  Requires a `CRON_SECRET` env var — any random string; Vercel sends it back
+  as `Authorization: Bearer <value>` automatically once it's set on the
+  project. Capped at `PLAN_LIMITS.pro.maxActiveAutomations` per account
+  (migration 0014).
+- **Free**: doesn't run on the cron at all. Instead, the Builder shows a
+  "Test run" button per automation block that calls
+  `/api/tools/[id]/automations/[automationId]/test-run` on demand, capped at
+  `PLAN_LIMITS.free.automationTestRuns` total per block.
+
+Both paths share the same generation logic in `src/lib/automationRunner.ts`.
 
 ## Known limitations to bring back for Phase 7
 
@@ -155,6 +186,7 @@ All four env vars need setting in Vercel's project settings too, not just
 ```
 src/lib/schema.ts              Zod schema + types for the six block types
 src/lib/exampleSchemas.ts      The hard-coded habit tracker (Phase 1 proof)
+src/lib/automationRunner.ts    Shared Claude-call logic for automation blocks
 src/lib/supabase/              Browser + server Supabase clients
 src/proxy.ts                   Keeps the Supabase auth cookie fresh (Next.js 16 renamed middleware.ts → proxy.ts)
 src/components/renderer/       Phase 1 engine (ToolRenderer + block renderers)
@@ -165,5 +197,8 @@ src/app/generate/              Phase 3 prompt-to-schema UI
 src/app/api/generate-schema/   Phase 3 Anthropic API route
 src/app/login/, /auth/callback/  Phase 4 magic-link auth + workspace join/create
 src/app/gallery/, /tools/[id]/   Phase 5 workspace gallery + tool viewer
+src/app/api/cron/automations/  Daily automation runner (Pro), see vercel.json
+src/app/api/tools/[id]/automations/.../test-run/  Manual automation runner (Free)
+src/app/api/tools/[id]/manifest/, /api/tool-icon/  Per-tool PWA install support
 supabase/migrations/           All SQL, in run order
 ```

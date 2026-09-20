@@ -14,6 +14,7 @@ import {
 } from "@/lib/schema";
 import { BlockEditor } from "@/components/builder/BlockEditor";
 import { ToolRenderer } from "@/components/renderer/ToolRenderer";
+import { isPlan, type Plan } from "@/lib/plans";
 
 /** sessionStorage key Phase 3's prompt-to-schema page uses to hand off a
  * freshly generated schema for editing here. */
@@ -39,7 +40,11 @@ function BuilderPageInner() {
   const [deleting, setDeleting] = useState(false);
   // Phase 4 tagging: who's creating this tool and which workspace it belongs
   // to, so every insert gets tagged automatically. Both stay null pre-auth.
-  const [owner, setOwner] = useState<{ userId: string; workspaceId: string | null } | null>(null);
+  // `plan` is used only to show the right automation test-run copy/limits
+  // in the automation block editor below.
+  const [owner, setOwner] = useState<{ userId: string; workspaceId: string | null; plan: Plan } | null>(
+    null,
+  );
 
   useEffect(() => {
     async function loadOwner() {
@@ -50,10 +55,14 @@ function BuilderPageInner() {
         if (!user) return;
         const { data: profile } = await supabase
           .from("profiles")
-          .select("workspace_id")
+          .select("workspace_id, plan")
           .eq("id", user.id)
           .maybeSingle();
-        setOwner({ userId: user.id, workspaceId: profile?.workspace_id ?? null });
+        setOwner({
+          userId: user.id,
+          workspaceId: profile?.workspace_id ?? null,
+          plan: isPlan(profile?.plan) ? profile.plan : "free",
+        });
       } catch {
         // Not signed in / can't reach Supabase yet — fine, owner just stays
         // null and the tool saves without an owner (see 0001_create_tools.sql).
@@ -256,6 +265,8 @@ function BuilderPageInner() {
               block={block}
               onChange={(next) => updateBlock(i, next)}
               onRemove={() => removeBlock(i)}
+              toolId={toolId}
+              plan={owner?.plan ?? "free"}
             />
           ))}
         </div>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ACTION_DOES,
   INPUT_KINDS,
@@ -7,17 +8,52 @@ import {
   type InputKind,
   type ViewDisplay,
 } from "@/lib/schema";
+import { PLAN_LIMITS, type Plan } from "@/lib/plans";
 
 /** Renders the right edit form for one block, based on its type. */
 export function BlockEditor({
   block,
   onChange,
   onRemove,
+  toolId,
+  plan,
 }: {
   block: Block;
   onChange: (next: Block) => void;
   onRemove: () => void;
+  // Only meaningful for "automation" blocks — the tool needs a saved id
+  // before it can be test-run, and free vs. Pro changes what happens next.
+  toolId?: string | null;
+  plan?: Plan;
 }) {
+  const [testStatus, setTestStatus] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  async function runTest() {
+    if (block.type !== "automation" || !toolId) return;
+    setTesting(true);
+    setTestStatus(null);
+    try {
+      const res = await fetch(`/api/tools/${toolId}/automations/${block.id}/test-run`, {
+        method: "POST",
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setTestStatus(body.error ?? "Test run failed.");
+        return;
+      }
+      setTestStatus("Generated a new record — check the live preview.");
+      // The server only tracks testRunsUsed for free plan (see the test-run
+      // route) — mirror that here so the count shown doesn't drift.
+      if (plan === "free") {
+        onChange({ ...block, testRunsUsed: block.testRunsUsed + 1 });
+      }
+    } catch {
+      setTestStatus("Couldn't reach the server.");
+    } finally {
+      setTesting(false);
+    }
+  }
   const fieldClass =
     "rounded-md border border-black/15 px-2 py-1 text-sm dark:border-white/20 dark:bg-transparent";
 
@@ -226,10 +262,34 @@ export function BlockEditor({
             />
             Use real web search (e.g. to find an actual article/recipe link)
           </label>
-          <p className="text-xs text-black/40 dark:text-white/40">
-            Runs once a day for every tool that has this block, inserting one new record into the
-            target table — no button, no manual trigger.
-          </p>
+          {plan === "pro" ? (
+            <p className="text-xs text-black/40 dark:text-white/40">
+              Runs automatically once a day, inserting one new record into the target table.
+            </p>
+          ) : (
+            <p className="text-xs text-black/40 dark:text-white/40">
+              Free plan: doesn&rsquo;t run automatically — use &ldquo;Test run&rdquo; to try it (
+              {Math.max(0, PLAN_LIMITS.free.automationTestRuns - block.testRunsUsed)} of{" "}
+              {PLAN_LIMITS.free.automationTestRuns} left). Upgrade to Pro for it to run every day on
+              its own.
+            </p>
+          )}
+
+          {toolId ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={runTest}
+                disabled={testing || (plan !== "pro" && block.testRunsUsed >= PLAN_LIMITS.free.automationTestRuns)}
+                className="w-fit rounded-md border border-black/15 px-2 py-1 text-xs hover:bg-black/5 disabled:opacity-50 dark:border-white/20 dark:hover:bg-white/10"
+              >
+                {testing ? "Running…" : "Test run"}
+              </button>
+              {testStatus && <span className="text-xs text-black/50 dark:text-white/50">{testStatus}</span>}
+            </div>
+          ) : (
+            <p className="text-xs text-black/40 dark:text-white/40">Save the tool first to test this.</p>
+          )}
         </>
       )}
     </div>

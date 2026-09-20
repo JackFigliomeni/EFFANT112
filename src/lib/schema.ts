@@ -93,8 +93,9 @@ const ruleBlockSchema = z.object({
 });
 
 // Unlike `rule` (a passive, unenforced note), `automation` actually runs —
-// once a day, the cron route (src/app/api/cron/automations/route.ts) calls
-// Claude with `prompt` and inserts the result as a new record into `target`.
+// once a day for Pro (the cron route, src/app/api/cron/automations), or on
+// demand for Free (the test-run route) — calling Claude with `prompt` and
+// inserting the result as a new record into `target`.
 const automationBlockSchema = z.object({
   type: z.literal("automation"),
   id: z.string().min(1),
@@ -103,6 +104,10 @@ const automationBlockSchema = z.object({
   // Lets Claude use real web search (e.g. to find an actual recipe/article
   // URL) instead of only generating from what it already knows.
   useWebSearch: z.boolean(),
+  // Free plan: manual "Test run" clicks count against PLAN_LIMITS.free's
+  // automationTestRuns instead of running on the daily cron at all. Managed
+  // by the test-run route, not user-editable in the builder.
+  testRunsUsed: z.number().int().min(0).default(0),
 });
 
 export const blockSchema = z
@@ -182,6 +187,6 @@ export function emptyBlock(type: BlockType, id: string): Block {
     case "rule":
       return { type, id, when: "", then: "" };
     case "automation":
-      return { type, id, target: "", prompt: "", useWebSearch: false };
+      return { type, id, target: "", prompt: "", useWebSearch: false, testRunsUsed: 0 };
   }
 }

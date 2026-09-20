@@ -71,6 +71,7 @@ function PricingInner() {
               Up to {PLAN_LIMITS.free.tools} {PLAN_LIMITS.free.tools === 1 ? "tool" : "tools"}
             </li>
             <li>{PLAN_LIMITS.free.generationsPerMonth} AI generations/month</li>
+            <li>{PLAN_LIMITS.free.automationTestRuns} test runs per automation</li>
             <li>Private, workspace, and public sharing</li>
           </ul>
           {plan === "free" && (
@@ -84,6 +85,7 @@ function PricingInner() {
           <ul className="flex flex-col gap-1 text-sm text-black/70 dark:text-white/70">
             <li>Unlimited tools</li>
             <li>{PLAN_LIMITS.pro.generationsPerMonth} AI generations/month</li>
+            <li>Up to {PLAN_LIMITS.pro.maxActiveAutomations} automations, running daily</li>
             <li>Private, workspace, and public sharing</li>
           </ul>
           {plan === "pro" ? (
