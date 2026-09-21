@@ -9,6 +9,9 @@
 // once a day per active automation for Pro, via cron — so unlike the other
 // limits above, "unlimited" was never on the table here: cost scales with
 // how many automations someone has running, independent of tool count.
+// Each generation or requested change to a generated app is one
+// "generation" — writing a whole app costs far more than the old schema
+// drafts did, so Pro is 50/month rather than the 100 it was.
 // Free gets `automationTestRuns` manual, on-demand test clicks per
 // automation block (see /api/tools/[id]/automations/[automationId]/test-run)
 // instead of the daily cron at all. Pro's `maxActiveAutomations` is enforced
@@ -16,7 +19,7 @@
 // not a quota that resets, since these run indefinitely once created.
 export const PLAN_LIMITS = {
   free: { tools: 1, generationsPerMonth: 5, automationTestRuns: 3 },
-  pro: { tools: Infinity, generationsPerMonth: 100, maxActiveAutomations: 5 },
+  pro: { tools: Infinity, generationsPerMonth: 50, maxActiveAutomations: 5 },
 } as const;
 
 export type Plan = keyof typeof PLAN_LIMITS;

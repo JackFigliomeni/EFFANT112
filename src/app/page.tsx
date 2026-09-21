@@ -1,11 +1,13 @@
 import { ButtonLink } from "@/components/ui/button";
 import { AutoPreview } from "@/components/home/AutoPreview";
 import { BuildTimeline } from "@/components/home/BuildTimeline";
+import { HeroDrifters } from "@/components/home/HeroDrifters";
 
 export default function Home() {
   return (
     <>
       <div className="relative flex min-h-[78vh] flex-col items-center justify-center py-16 text-center">
+        <HeroDrifters />
         <h1 className="relative z-10 max-w-2xl text-balance font-display text-4xl font-semibold leading-[1.06] sm:text-7xl">
           MiniWare
         </h1>

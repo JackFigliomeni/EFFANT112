@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { ToolSchema, TableBlock, ActionBlock } from "@/lib/schema";
+import type { ToolSchema, TableBlock, ActionBlock, AppBlock } from "@/lib/schema";
 import { ViewBlockRenderer } from "./blocks/ViewBlockRenderer";
 import { InputBlockRenderer } from "./blocks/InputBlockRenderer";
+import { AppFrame } from "@/components/AppFrame";
 
 type Row = { id: string; data: Record<string, unknown>; created_at: string };
 
@@ -19,6 +20,9 @@ export function ToolRenderer({
   schema,
   toolId,
   themeColor,
+  name = "App",
+  frameClassName = "h-[70vh] min-h-[28rem] rounded-[20px] border border-border shadow-soft",
+  previewKey,
 }: {
   schema: ToolSchema;
   // null = not saved yet: everything works, but records live in memory only
@@ -27,6 +31,10 @@ export function ToolRenderer({
   // Set in the Builder's Design tab (tools.theme_color) — the tool's own
   // accent, so an installed tool doesn't just inherit the site's black/white.
   themeColor?: string;
+  // Only used when the tool is a generated app (see AppFrame).
+  name?: string;
+  frameClassName?: string;
+  previewKey?: string;
 }) {
   const supabase = createClient();
   const [draft, setDraft] = useState<Record<string, unknown>>({});
@@ -148,6 +156,20 @@ export function ToolRenderer({
     }
   }
 
+  const appBlock = schema.blocks.find((b): b is AppBlock => b.type === "app");
+  if (appBlock) {
+    return (
+      <AppFrame
+        html={appBlock.html}
+        toolId={toolId}
+        accent={themeColor}
+        title={name}
+        storageKey={previewKey}
+        className={frameClassName}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {status && (
@@ -223,6 +245,10 @@ export function ToolRenderer({
                 Rule (not yet enforced): when <em>{block.when}</em>, then <em>{block.then}</em>.
               </p>
             );
+
+          case "app":
+            // Handled above: an app is the whole tool, never one part of it.
+            return null;
 
           case "automation":
             // Actually runs — see src/app/api/cron/automations/route.ts,

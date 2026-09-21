@@ -8,6 +8,7 @@ import {
   BLOCK_TYPES,
   VISIBILITIES,
   emptyBlock,
+  findAppBlock,
   validateToolSchema,
   type Block,
   type BlockType,
@@ -15,6 +16,7 @@ import {
   type Visibility,
 } from "@/lib/schema";
 import { BlockEditor } from "@/components/builder/BlockEditor";
+import { AppAssistant } from "@/components/builder/AppAssistant";
 import { ToolRenderer } from "@/components/renderer/ToolRenderer";
 import { AccentPicker } from "@/components/AccentPicker";
 import { ShareMenu } from "@/components/ShareMenu";
@@ -46,6 +48,8 @@ function BuilderPageInner() {
   const [selected, setSelected] = useState<number | null>(null);
   const [visibility, setVisibility] = useState<Visibility>("private");
   const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
+  // The app's code is re-run only after you stop typing, not on every keystroke.
+  const [previewHtml, setPreviewHtml] = useState("");
   const [tab, setTab] = useState<"preview" | "design">("preview");
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -128,6 +132,7 @@ function BuilderPageInner() {
             setBlocks(result.schema.blocks);
             setSelected(0);
             if (typeof prefill.themeColor === "string") setThemeColor(prefill.themeColor);
+            if (typeof prefill.description === "string") setDescription(prefill.description);
           }
         } catch {
           // fall through to a blank slate
@@ -138,6 +143,14 @@ function BuilderPageInner() {
     // Only re-run if the id in the URL changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
+
+  const liveHtml = findAppBlock(blocks)?.html ?? "";
+  useEffect(() => {
+    // First load shows immediately; edits after that wait until typing stops.
+    const t = setTimeout(() => setPreviewHtml(liveHtml), previewHtml ? 700 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveHtml]);
 
   function addBlock(type: BlockType) {
     const id = `${type}_${blocks.filter((b) => b.type === type).length + 1}`;
@@ -233,9 +246,14 @@ function BuilderPageInner() {
     }
   }
 
-  const previewSchema: ToolSchema = { blocks };
+  const appBlock = findAppBlock(blocks);
+  const previewSchema: ToolSchema = { blocks: appBlock ? [{ ...appBlock, html: previewHtml }] : blocks };
   const previewValid = blocks.length > 0 && validateToolSchema(previewSchema).ok;
   const selectedBlock = selected !== null ? blocks[selected] : undefined;
+
+  function setAppHtml(html: string) {
+    setBlocks((prev) => prev.map((b) => (b.type === "app" ? { ...b, html } : b)));
+  }
 
   return (
     <section className="workspace builder-workspace">
@@ -249,9 +267,13 @@ function BuilderPageInner() {
           aria-label="Tool name"
         />
         <p className="mt-3 text-xs text-muted-foreground">
-          {blocks.length} {blocks.length === 1 ? "part" : "parts"}
+          {appBlock ? "A complete app" : `${blocks.length} ${blocks.length === 1 ? "part" : "parts"}`}
         </p>
 
+        {appBlock && <AppAssistant html={appBlock.html} onChange={setAppHtml} />}
+
+        {!appBlock && (
+        <>
         <div className="mt-8 space-y-2">
           {blocks.map((block, i) => (
             <button
@@ -275,6 +297,8 @@ function BuilderPageInner() {
             ))}
           </div>
         </div>
+        </>
+        )}
       </aside>
 
       {/* center: what you're making, working, plus how it looks */}
@@ -297,8 +321,15 @@ function BuilderPageInner() {
         <div className="canvas-body">
           {tab === "preview" ? (
             previewValid ? (
-              <div className="mx-auto max-w-xl">
-                <ToolRenderer schema={previewSchema} toolId={toolId} themeColor={accentOf(themeColor)} />
+              <div className={`mx-auto ${appBlock ? "max-w-3xl" : "max-w-xl"}`}>
+                <ToolRenderer
+                  schema={previewSchema}
+                  toolId={toolId}
+                  themeColor={accentOf(themeColor)}
+                  name={name}
+                  previewKey="builder-new"
+                  frameClassName="h-[calc(100vh-14rem)] min-h-[30rem] rounded-[20px] border border-border shadow-soft"
+                />
               </div>
             ) : (
               <div className="grid min-h-[20rem] place-items-center text-center">
@@ -340,10 +371,18 @@ function BuilderPageInner() {
       {/* right: edit the selected part, then release */}
       <aside className="workspace-test">
         <span className="font-mono text-[9px] uppercase text-muted-foreground">
-          {selectedBlock ? "Edit part" : "Edit & release"}
+          {appBlock ? "App code" : selectedBlock ? "Edit part" : "Edit & release"}
         </span>
         <div className="mt-6">
-          {selectedBlock && selected !== null ? (
+          {appBlock ? (
+            <textarea
+              value={appBlock.html}
+              onChange={(e) => setAppHtml(e.target.value)}
+              spellCheck={false}
+              aria-label="App code"
+              className="h-72 w-full resize-y rounded-[20px] border border-border bg-card/70 p-3 font-mono text-[10px] leading-relaxed outline-none focus:border-foreground"
+            />
+          ) : selectedBlock && selected !== null ? (
             <BlockEditor
               key={selected}
               block={selectedBlock}
@@ -389,7 +428,7 @@ function BuilderPageInner() {
           {toolId && (
             <div className="mt-4 flex items-center gap-3 text-xs">
               <Link href={`/tools/${toolId}`} className="text-muted-foreground underline hover:text-foreground">
-                Open tool
+                Open and install as app
               </Link>
               {!confirmingDelete ? (
                 <button onClick={() => setConfirmingDelete(true)} className="text-destructive underline">

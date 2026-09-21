@@ -7,7 +7,14 @@ export const EXTRA_TOOL_COLUMNS = "theme_color, description";
 
 export function isMissingColumn(error: { code?: string; message?: string } | null | undefined): boolean {
   if (!error) return false;
-  return error.code === "42703" || /column .* does not exist/i.test(error.message ?? "");
+  // 42703 is Postgres itself; PGRST204 is PostgREST's schema-cache miss, which
+  // is what an insert/update naming an unmigrated column actually returns.
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    /column .* does not exist/i.test(error.message ?? "") ||
+    /could not find the '.*' column/i.test(error.message ?? "")
+  );
 }
 
 export const DEFAULT_THEME_COLOR = "#171717";

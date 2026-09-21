@@ -150,7 +150,7 @@
 
 /* ---- workspace layout (builder / generator / publish) ---- */
 .workspace { min-height:calc(100vh - 6rem); display:grid; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:color-mix(in oklab,var(--background) 86%,transparent); }
-.generator-workspace { grid-template-columns:minmax(12rem,.7fr) minmax(20rem,1.25fr) minmax(20rem,1.1fr); }
+.generator-workspace { grid-template-columns:minmax(11rem,.5fr) minmax(19rem,1fr) minmax(24rem,1.7fr); }
 .builder-workspace { grid-template-columns:minmax(13rem,.72fr) minmax(24rem,1.5fr) minmax(17rem,.9fr); }
 .workspace-rail,.workspace-controls,.workspace-test,.workspace-canvas { position:relative; min-width:0; padding:2rem; }
 .workspace-rail,.workspace-controls,.workspace-canvas { border-right:1px solid var(--border); }
@@ -236,3 +236,11 @@
 .field { width:100%; border-bottom:1px solid var(--border); background:transparent; padding:.65rem 0; font-size:.9rem; outline:none; transition:border-color .2s; }
 .field:focus { border-color:var(--foreground); }
 .field::placeholder { color:var(--muted-foreground); }
+
+/* When a tool is installed and opened as its own app, the site around it
+ * disappears — it should look like the app, not like a page on a website. */
+@media (display-mode: standalone) {
+  html[data-tool-page] .site-chrome { display: none !important; }
+}
+
+@keyframes indeterminate { from { transform: translateX(-100%); } to { transform: translateX(350%); } }

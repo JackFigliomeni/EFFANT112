@@ -12,7 +12,7 @@ const BUBBLES = [
 
 export function OrbitField() {
   return (
-    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+    <div className="site-chrome pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
       {BUBBLES.map((className) => (
         <span key={className} className={className} />
       ))}

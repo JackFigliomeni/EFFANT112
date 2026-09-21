@@ -116,6 +116,18 @@ const automationBlockSchema = z.object({
   testRunsUsed: z.number().int().min(0).default(0),
 });
 
+// A complete, self-contained app (one HTML document with its own CSS and JS),
+// written by the generator or by hand. It runs in a sandboxed iframe (see
+// components/AppFrame) — this is what lets a tool be a real application
+// (calculators, planners, boards, dashboards, games...) instead of only the
+// fixed input/table/view parts above. It's deliberately NOT in BLOCK_TYPES:
+// it isn't something you "add a part" of, it *is* the tool.
+const appBlockSchema = z.object({
+  type: z.literal("app"),
+  id: z.string().min(1),
+  html: z.string().min(1).max(90000),
+});
+
 export const blockSchema = z
   .discriminatedUnion("type", [
     inputBlockSchema,
@@ -124,6 +136,7 @@ export const blockSchema = z
     actionBlockSchema,
     ruleBlockSchema,
     automationBlockSchema,
+    appBlockSchema,
   ])
   .superRefine((block, ctx) => {
     if (block.type === "input" && INPUT_KINDS_NEEDING_OPTIONS.includes(block.kind as "select" | "multiselect")) {
@@ -159,6 +172,7 @@ export type ViewBlock = z.infer<typeof viewBlockSchema>;
 export type ActionBlock = z.infer<typeof actionBlockSchema>;
 export type RuleBlock = z.infer<typeof ruleBlockSchema>;
 export type AutomationBlock = z.infer<typeof automationBlockSchema>;
+export type AppBlock = z.infer<typeof appBlockSchema>;
 export type Block = z.infer<typeof blockSchema>;
 
 export const toolSchemaSchema = z.object({
@@ -195,4 +209,13 @@ export function emptyBlock(type: BlockType, id: string): Block {
     case "automation":
       return { type, id, target: "", prompt: "", useWebSearch: false, testRunsUsed: 0 };
   }
+}
+
+/** The tool's app, if it is one (as opposed to a tool made of input/table/view parts). */
+export function findAppBlock(blocks: Block[]): AppBlock | undefined {
+  return blocks.find((b): b is AppBlock => b.type === "app");
+}
+
+export function appToolSchema(html: string): ToolSchema {
+  return { blocks: [{ type: "app", id: "app", html }] };
 }

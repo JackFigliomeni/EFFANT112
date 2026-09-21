@@ -106,8 +106,12 @@ Free vs Pro is defined in one place, `src/lib/plans.ts`:
 | | Free | Pro ($20/month) |
 |---|---|---|
 | Tools | 1 | Unlimited |
-| AI generations | 5/month | 100/month |
+| AI generations | 5/month | 50/month |
 | Automations | 3 manual test runs each, no daily cron | Up to 5, running daily |
+
+Generated apps are stored as a single `app` block (`src/lib/schema.ts`) and their
+per-user data lives in `app_state` (migration 0017), falling back to localStorage
+until it is applied. Each generation or requested change counts as one generation.
 
 Tool limits are enforced in Postgres (migration 0012's `enforce_tool_limit`
 trigger, tightened to 1 free tool by migration 0013 — holds regardless of
@@ -194,7 +198,9 @@ src/components/builder/        Phase 2 block editor
 src/app/tools/demo/            Phase 1 hard-coded demo
 src/app/builder/               Phase 2 manual builder
 src/app/generate/              Phase 3 prompt-to-schema UI
-src/app/api/generate-schema/   Phase 3 Anthropic API route
+src/app/api/generate-schema/   Phase 3 Anthropic API route (block-tool schemas; no longer used by /generate)
+src/app/api/generate-app/      Streams a complete single-file app from a prompt (or applies a change to one)
+src/components/AppFrame.tsx    Runs a generated app in a sandboxed iframe (no network, private per-user storage)
 src/app/login/, /auth/callback/  Phase 4 magic-link auth + workspace join/create
 src/app/gallery/, /tools/[id]/   Phase 5 workspace gallery + tool viewer
 src/app/api/cron/automations/  Daily automation runner (Pro), see vercel.json

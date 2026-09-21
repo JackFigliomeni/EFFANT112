@@ -32,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <div className="relative min-h-screen overflow-x-clip bg-background text-foreground selection:bg-signal/20">
           <AmbientBackground />
           <div className="relative z-10 mx-auto max-w-[90rem] px-4 pb-24 sm:px-7 sm:pb-16">
-            <header className="flex items-center gap-4 py-5">
+            <header className="site-chrome flex items-center gap-4 py-5">
               <Link
                 href="/"
                 className="mr-auto font-mono text-xs font-semibold uppercase"
