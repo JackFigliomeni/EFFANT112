@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { AuthNavStatus } from "@/components/AuthNavStatus";
 import { AmbientBackground } from "@/components/site/AmbientBackground";
+import { LogoMark } from "@/components/brand/LogoMark";
 import { MobileNav, PillNav } from "@/components/site/PillNav";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import "./globals.css";
@@ -35,9 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <header className="site-chrome flex items-center gap-4 py-5">
               <Link
                 href="/"
-                className="mr-auto font-mono text-xs font-semibold uppercase"
+                className="mr-auto flex items-center gap-2.5 font-mono text-xs font-semibold uppercase"
                 aria-label="effant home"
               >
+                <LogoMark className="h-6 w-auto" />
                 effant
               </Link>
               <PillNav />
