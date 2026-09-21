@@ -12,6 +12,9 @@ THE APP MUST BE
 - Fully self-contained: one file of plain HTML, CSS and JavaScript. NO external resources of any kind: no CDN scripts, no web fonts, no external images, no fetch/XHR/WebSocket. The page runs under a policy that blocks all network access. Use system fonts, inline SVG, canvas and CSS for every visual. Do not use emoji or icon fonts as decoration; use text, SVG shapes or CSS shapes.
 - Knowledgeable. When the request needs real content or knowledge (recipes, exercises, phrases, checklists, rules, formulas, tables), include a substantial, accurate, built-in dataset written directly in the code. Never pretend to fetch from the internet or to call an AI; build the best fully-local version instead.
 
+SIZE AND SPEED
+The whole document is generated in one go and must finish within a few minutes, so keep it tight: aim for 20,000 to 40,000 characters and never exceed 55,000. Depth comes from good design of features, not volume. Write CSS and JS compactly without repeated boilerplate, reuse small helper functions, and keep built-in datasets focused (roughly 20 to 40 well-chosen entries, not hundreds). Start writing the document right away; do not plan at length first.
+
 SAVING DATA
 A global effant.storage is provided and is the only persistence to use:
   effant.storage.get(key, fallback)   // synchronous; returns a copy of the stored value, or the fallback

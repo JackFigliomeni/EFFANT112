@@ -7,6 +7,9 @@ import { APP_CHANGE_ADDENDUM, APP_SYSTEM_PROMPT } from "@/lib/appPrompt";
 export const runtime = "nodejs";
 // Writing a whole app takes a while; this is the platform's default ceiling.
 export const maxDuration = 300;
+// Stop a little before the platform would kill the function, so the person
+// gets a real message instead of a silently cut-off document.
+const DEADLINE_MS = 270_000;
 
 const MAX_PROMPT = 3000;
 const MAX_HTML = 90000;
@@ -67,10 +70,12 @@ export async function POST(request: Request) {
 
   const client = new Anthropic();
   const stream = client.messages.stream({
-    model: "claude-opus-5",
+    // Sonnet: a whole app is tens of thousands of tokens, and Opus is too slow
+    // to finish inside the function time limit.
+    model: "claude-sonnet-5",
     max_tokens: 32000,
     thinking: { type: "adaptive" },
-    output_config: { effort: "medium" },
+    output_config: { effort: "low" },
     system: APP_SYSTEM_PROMPT + (isChange ? APP_CHANGE_ADDENDUM : ""),
     messages: [{ role: "user", content: userContent }],
   });
@@ -82,6 +87,11 @@ export async function POST(request: Request) {
         controller.enqueue(encoder.encode(`\n<!--EFFANT_ERROR:${message.replace(/-->/g, "")}-->`));
       };
       stream.on("text", (delta) => controller.enqueue(encoder.encode(delta)));
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        stream.abort();
+      }, DEADLINE_MS);
       try {
         const final = await stream.finalMessage();
         if (final.stop_reason === "max_tokens") {
@@ -89,8 +99,11 @@ export async function POST(request: Request) {
         }
       } catch (err) {
         console.error("generate-app: model call failed", err);
-        fail(err instanceof Anthropic.APIError ? `The model returned an error: ${err.message}` : "Something went wrong while building.");
+        if (timedOut) fail("That app took too long to build. Try describing a smaller version, or build it in two steps.");
+        else if (err instanceof Anthropic.APIError && /credit balance/i.test(err.message)) fail("Building is unavailable right now (the AI service is out of credit). Try again later.");
+        else fail(err instanceof Anthropic.APIError ? "The AI service returned an error. Please try again." : "Something went wrong while building.");
       } finally {
+        clearTimeout(timer);
         controller.close();
       }
     },

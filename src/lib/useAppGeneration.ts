@@ -64,7 +64,11 @@ export function useAppGeneration() {
       }
       const html = cleanGeneratedHtml(acc);
       if (!/<html[\s>]|<!doctype html/i.test(html) || !/<\/html>\s*$/i.test(html)) {
-        setError("The result wasn't a complete app. Try again, or describe it a little differently.");
+        setError(
+          /<\/html>/i.test(acc)
+            ? "The result wasn't a complete app. Try again, or describe it a little differently."
+            : "The build was cut off before it finished. Try again, or ask for a slightly smaller app.",
+        );
         return null;
       }
       return html;
