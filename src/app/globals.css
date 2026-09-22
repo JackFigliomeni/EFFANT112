@@ -210,6 +210,9 @@
   .workspace { min-height:auto; }
   .stage-track { margin-top:2rem; flex-direction:row; overflow:auto; }
   .stage-track::before { left:1rem; right:1rem; top:1rem; bottom:auto; border-left:0; border-top:1px dashed var(--border); }
+  /* In row layout each node must size to its own text, not share width:100%
+     of the row — otherwise words like "refine" get squeezed and break mid-word. */
+  .stage-node { width:auto; flex:0 0 auto; white-space:nowrap; }
 }
 
 @media (max-width: 640px) {

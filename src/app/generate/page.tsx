@@ -163,7 +163,18 @@ export default function GeneratePage() {
               />
               <div className="mt-4 flex flex-wrap gap-2">
                 {EXAMPLE_PROMPTS.map((example) => (
-                  <Button key={example} variant="glass" size="sm" className="h-auto whitespace-normal py-2 text-left" onClick={() => setPrompt(example)} disabled={gen.building}>
+                  <Button
+                    key={example}
+                    variant="glass"
+                    size="sm"
+                    // The Button base class sets whitespace-nowrap; !whitespace-normal
+                    // (Tailwind's important-prefix) is needed to actually win the
+                    // cascade so these long example prompts wrap instead of
+                    // overflowing the row on narrow screens.
+                    className="h-auto max-w-full !whitespace-normal py-2 text-left"
+                    onClick={() => setPrompt(example)}
+                    disabled={gen.building}
+                  >
                     {example}
                   </Button>
                 ))}
@@ -184,7 +195,14 @@ export default function GeneratePage() {
               />
               <div className="mt-4 flex flex-wrap gap-2">
                 {CHANGE_IDEAS.map((idea) => (
-                  <Button key={idea} variant="glass" size="sm" onClick={() => setChange(idea)} disabled={gen.building}>
+                  <Button
+                    key={idea}
+                    variant="glass"
+                    size="sm"
+                    className="h-auto max-w-full !whitespace-normal py-2 text-left"
+                    onClick={() => setChange(idea)}
+                    disabled={gen.building}
+                  >
                     {idea}
                   </Button>
                 ))}
