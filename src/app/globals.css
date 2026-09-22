@@ -112,6 +112,27 @@
   50% { transform: translate3d(1.4rem, -2.2rem, 0); }
 }
 
+/* Continuous ambient float for the room's bubbles (DepthRoom) — layered on
+   an inner element so it composes with the outer element's JS-driven
+   scroll-parallax transform instead of fighting over the same property. */
+@keyframes bubble-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  35% { transform: translate3d(7rem, 3rem, 0) scale(1.12); }
+  70% { transform: translate3d(-2rem, 8rem, 0) scale(.92); }
+}
+
+@keyframes bubble-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(.9); }
+  40% { transform: translate3d(-9rem, 5rem, 0) scale(1.08); }
+  75% { transform: translate3d(3rem, -4rem, 0) scale(1); }
+}
+
+@keyframes bubble-drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  45% { transform: translate3d(5rem, -6rem, 0) scale(.95); }
+  80% { transform: translate3d(-6rem, -2rem, 0) scale(1.1); }
+}
+
 @utility animate-reveal { animation: reveal .8s cubic-bezier(.16,1,.3,1) both; }
 @utility animate-fitted-part { animation: fitted-part .55s cubic-bezier(.16,1,.3,1) both; }
 

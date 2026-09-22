@@ -54,21 +54,25 @@ function RoomLines() {
 }
 
 const TONES = ["signal", "cool", "fresh"] as const;
+const ANIMS = ["a", "b", "c"] as const;
 
 // Nearer bubbles are larger and move faster as you scroll; that difference in
 // speed is what reads as depth. Positions are chosen to stay off the middle
-// column where the text sits.
+// column where the text sits. `anim`/`duration`/`delay` drive a slow ambient
+// float (see bubble-drift-* in globals.css) that runs all the time, on top
+// of the scroll-parallax; the further a bubble sits (lower `speed`), the
+// softer its `blur`, like background objects out of focus.
 const BUBBLES = [
-  { top: 4, left: "4%", size: 210, speed: 0.34, tone: 0 },
-  { top: 9, left: "84%", size: 150, speed: 0.2, tone: 1 },
-  { top: 24, left: "-3%", size: 120, speed: 0.12, tone: 2 },
-  { top: 30, left: "90%", size: 260, speed: 0.4, tone: 0 },
-  { top: 44, left: "6%", size: 170, speed: 0.22, tone: 1 },
-  { top: 52, left: "82%", size: 110, speed: 0.1, tone: 2 },
-  { top: 64, left: "-2%", size: 240, speed: 0.36, tone: 0 },
-  { top: 72, left: "88%", size: 150, speed: 0.18, tone: 1 },
-  { top: 84, left: "10%", size: 130, speed: 0.14, tone: 2 },
-  { top: 92, left: "80%", size: 220, speed: 0.3, tone: 0 },
+  { top: 4, left: "4%", size: 210, speed: 0.34, tone: 0, anim: 0, duration: 22, delay: 0 },
+  { top: 9, left: "84%", size: 150, speed: 0.2, tone: 1, anim: 1, duration: 26, delay: -6 },
+  { top: 24, left: "-3%", size: 120, speed: 0.12, tone: 2, anim: 2, duration: 30, delay: -14 },
+  { top: 30, left: "90%", size: 260, speed: 0.4, tone: 0, anim: 1, duration: 20, delay: -3 },
+  { top: 44, left: "6%", size: 170, speed: 0.22, tone: 1, anim: 0, duration: 25, delay: -11 },
+  { top: 52, left: "82%", size: 110, speed: 0.1, tone: 2, anim: 2, duration: 28, delay: -8 },
+  { top: 64, left: "-2%", size: 240, speed: 0.36, tone: 0, anim: 2, duration: 21, delay: -16 },
+  { top: 72, left: "88%", size: 150, speed: 0.18, tone: 1, anim: 0, duration: 27, delay: -4 },
+  { top: 84, left: "10%", size: 130, speed: 0.14, tone: 2, anim: 1, duration: 24, delay: -19 },
+  { top: 92, left: "80%", size: 220, speed: 0.3, tone: 0, anim: 0, duration: 23, delay: -9 },
 ];
 
 export function DepthRoom() {
@@ -129,7 +133,13 @@ export function DepthRoom() {
             className="absolute will-change-transform"
             style={{ top: `${b.top}%`, left: b.left, width: b.size, height: b.size }}
           >
-            <span className={`block size-full rounded-full room-bubble-${TONES[b.tone]}`} />
+            <span
+              className={`block size-full rounded-full room-bubble-${TONES[b.tone]}`}
+              style={{
+                animation: `bubble-drift-${ANIMS[b.anim]} ${b.duration}s ease-in-out ${b.delay}s infinite`,
+                filter: b.speed < 0.3 ? `blur(${Math.round((0.3 - b.speed) * 10)}px)` : undefined,
+              }}
+            />
           </div>
         ))}
       </div>
