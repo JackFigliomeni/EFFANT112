@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { isPlan, PRO_PRICE_DISPLAY, type Plan } from "@/lib/plans";
+import { isMissingColumn } from "@/lib/toolColumns";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,11 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [workspaceName, setWorkspaceName] = useState<string | null>(null);
+  const [savingName, setSavingName] = useState(false);
+  const [nameMessage, setNameMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -29,11 +35,64 @@ export default function SettingsPage() {
       setChecked(true);
       if (!user) return;
       setEmail(user.email ?? null);
-      const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).maybeSingle();
+      let profileRes = await supabase
+        .from("profiles")
+        .select("plan, display_name, workspace_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (isMissingColumn(profileRes.error)) {
+        const fallback = await supabase.from("profiles").select("plan, workspace_id").eq("id", user.id).maybeSingle();
+        profileRes = { ...fallback, data: fallback.data ? { ...fallback.data, display_name: null } : null } as typeof profileRes;
+      }
+      const profile = profileRes.data;
       setPlan(isPlan(profile?.plan) ? profile.plan : "free");
+      setDisplayName(profile?.display_name ?? "");
+      setWorkspaceId(profile?.workspace_id ?? null);
+      if (profile?.workspace_id) {
+        const { data: workspace } = await supabase
+          .from("workspaces")
+          .select("name")
+          .eq("id", profile.workspace_id)
+          .maybeSingle();
+        setWorkspaceName(workspace?.name ?? null);
+      }
     }
     load();
   }, [supabase]);
+
+  async function saveDisplayName() {
+    const name = displayName.trim();
+    if (!name) return;
+    setSavingName(true);
+    setNameMessage(null);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from("profiles").update({ display_name: name }).eq("id", user.id);
+      if (error) {
+        setNameMessage(error.message);
+        return;
+      }
+      // Rename the workspace to match if it still has the old email-based
+      // name (or no real name yet) — a shared workspace someone already
+      // renamed on purpose is left alone.
+      if (workspaceId && (!workspaceName || workspaceName === `${email}'s workspace`)) {
+        const newWorkspaceName = `${name}'s workspace`;
+        const { error: workspaceError } = await supabase
+          .from("workspaces")
+          .update({ name: newWorkspaceName })
+          .eq("id", workspaceId);
+        if (!workspaceError) setWorkspaceName(newWorkspaceName);
+      }
+      setNameMessage("Saved.");
+    } catch (err) {
+      setNameMessage(err instanceof Error ? err.message : "Couldn't save.");
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   async function openBillingPortal() {
     setLoadingPortal(true);
@@ -95,6 +154,24 @@ export default function SettingsPage() {
       <span className="font-mono text-[10px] uppercase text-signal">Settings</span>
       <h1 className="mt-3 text-3xl font-semibold">Your account, your terms.</h1>
       <p className="mt-2 text-xs text-muted-foreground">{email}</p>
+
+      <div className="mt-12 max-w-sm space-y-3">
+        <h2 className="text-sm font-semibold">Profile</h2>
+        <label className="block text-xs text-muted-foreground">
+          Name
+          <input
+            type="text"
+            className="field mt-1 text-foreground"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Shown on tools you publish to the Community"
+          />
+        </label>
+        <Button variant="ink" onClick={saveDisplayName} disabled={savingName || !displayName.trim()}>
+          {savingName ? "Saving…" : "Save name"}
+        </Button>
+        {nameMessage && <p className="border-l-2 border-signal pl-3 text-xs text-muted-foreground">{nameMessage}</p>}
+      </div>
 
       <div className="mt-12 grid gap-14 md:grid-cols-2">
         <div className="space-y-5">

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isMissingColumn } from "@/lib/toolColumns";
 
 export type EnsureProfileError =
   | "invalid_invite"
@@ -17,6 +18,7 @@ export async function ensureProfile(
   userId: string,
   userEmail: string | null | undefined,
   inviteCode?: string | null,
+  displayName?: string | null,
 ): Promise<{ ok: true } | { ok: false; error: EnsureProfileError }> {
   const { data: existingProfile } = await supabase
     .from("profiles")
@@ -26,6 +28,7 @@ export async function ensureProfile(
 
   if (existingProfile) return { ok: true };
 
+  const name = displayName?.trim() || null;
   let workspaceId: string;
 
   if (inviteCode) {
@@ -39,16 +42,22 @@ export async function ensureProfile(
   } else {
     const { data: newWorkspace, error: createError } = await supabase
       .from("workspaces")
-      .insert({ name: `${userEmail ?? "New"}'s workspace` })
+      .insert({ name: `${name ?? userEmail ?? "New"}'s workspace` })
       .select("id")
       .single();
     if (createError || !newWorkspace) return { ok: false, error: "workspace_create_failed" };
     workspaceId = newWorkspace.id;
   }
 
-  const { error: profileError } = await supabase
+  let { error: profileError } = await supabase
     .from("profiles")
-    .insert({ id: userId, workspace_id: workspaceId });
+    .insert({ id: userId, workspace_id: workspaceId, display_name: name });
+  // display_name is a newer column (migration 0018) — if it hasn't reached
+  // this environment's database yet, still create the profile without it
+  // rather than blocking sign-in entirely.
+  if (isMissingColumn(profileError)) {
+    ({ error: profileError } = await supabase.from("profiles").insert({ id: userId, workspace_id: workspaceId }));
+  }
   if (profileError) return { ok: false, error: "profile_create_failed" };
 
   return { ok: true };

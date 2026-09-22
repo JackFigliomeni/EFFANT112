@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { ShareMenu } from "@/components/ShareMenu";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { DEFAULT_THEME_COLOR, isMissingColumn } from "@/lib/toolColumns";
 
 export const dynamic = "force-dynamic";
 
@@ -15,16 +13,14 @@ type CommunityTool = {
   created_at: string;
   theme_color?: string | null;
   description?: string | null;
+  author: string | null;
 };
 
-/**
- * Everything anyone has published, browsable without an account. No author
- * shown on purpose: we only have owner_id/email, and publishing a tool
- * shouldn't out someone's email address — add a display_name to profiles
- * before showing "by ...".
- */
+/** Everything anyone has published, browsable without an account — including
+ * who published it, via /api/community (profiles.display_name isn't
+ * readable cross-user under RLS, so that route reads it with the admin
+ * client instead of this page querying Supabase directly). */
 export default function CommunityPage() {
-  const supabase = createClient();
   const [tools, setTools] = useState<CommunityTool[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -32,29 +28,20 @@ export default function CommunityPage() {
 
   useEffect(() => {
     async function load() {
-      let result = await supabase
-        .from("tools")
-        .select("id, name, created_at, theme_color, description")
-        .eq("visibility", "public")
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (isMissingColumn(result.error)) {
-        result = (await supabase
-          .from("tools")
-          .select("id, name, created_at")
-          .eq("visibility", "public")
-          .order("created_at", { ascending: false })
-          .limit(100)) as typeof result;
+      try {
+        const res = await fetch("/api/community");
+        const body = await res.json();
+        if (!res.ok) {
+          setError(body.error ?? "Couldn't load the community page.");
+          return;
+        }
+        setTools(body.tools as CommunityTool[]);
+      } catch {
+        setError("Couldn't reach the server.");
       }
-      const { data, error } = result;
-      if (error) {
-        setError(error.message);
-        return;
-      }
-      setTools((data ?? []) as CommunityTool[]);
     }
     load();
-  }, [supabase]);
+  }, []);
 
   const filtered = useMemo(() => {
     if (!tools) return null;
@@ -108,51 +95,57 @@ export default function CommunityPage() {
             )}
           </div>
         ) : (
-          filtered.map((tool, index) => {
-            const accent = tool.theme_color && tool.theme_color !== DEFAULT_THEME_COLOR ? tool.theme_color : "var(--signal)";
-            const open = openId === tool.id;
-            return (
-              <article
-                key={tool.id}
-                className="animate-reveal border-t border-border py-9"
-                style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
-              >
-                <div className="grid gap-6 md:grid-cols-[1.4rem_1fr_auto] md:gap-8">
-                  <span className="mt-3 hidden size-3 rounded-full md:block" style={{ backgroundColor: accent, boxShadow: `0 0 0 .4rem color-mix(in oklab, ${accent} 14%, transparent)` }} />
-                  <div className="min-w-0">
-                    <Link href={`/tools/${tool.id}`} className="block text-3xl font-semibold leading-tight tracking-tight hover:underline md:text-4xl">
+          <div className="grid grid-cols-1 gap-6 border-t border-border pt-9 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((tool, index) => {
+              const open = openId === tool.id;
+              return (
+                <article
+                  key={tool.id}
+                  className="animate-reveal flex flex-col overflow-hidden rounded-[20px] border border-border bg-card/60 shadow-soft"
+                  style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
+                >
+                  <Link href={`/tools/${tool.id}`} className="block aspect-square w-full overflow-hidden bg-muted">
+                    <img
+                      src={`/api/tool-icon/${tool.id}?size=400`}
+                      alt=""
+                      className="size-full object-cover transition-transform hover:scale-105"
+                    />
+                  </Link>
+                  <div className="flex flex-1 flex-col gap-2 p-5">
+                    <Link href={`/tools/${tool.id}`} className="text-lg font-semibold leading-tight tracking-tight hover:underline">
                       {tool.name}
                     </Link>
                     {tool.description && (
-                      <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">{tool.description}</p>
+                      <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{tool.description}</p>
                     )}
-                    <p className="mt-4 font-mono text-[9px] uppercase text-muted-foreground">
-                      Published {new Date(tool.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                    <p className="mt-auto pt-2 font-mono text-[9px] uppercase text-muted-foreground">
+                      {tool.author && `By ${tool.author} · `}
+                      {new Date(tool.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
                     </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Button variant="quiet" size="sm" onClick={() => setOpenId(open ? null : tool.id)}>
+                        {open ? "Close" : "Preview"}
+                      </Button>
+                      <ShareMenu url={`/tools/${tool.id}`} title={tool.name} />
+                      <ButtonLink href={`/tools/${tool.id}`} variant="ink" size="sm" className="ml-auto">
+                        Open
+                      </ButtonLink>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-start gap-2 md:justify-end">
-                    <Button variant="quiet" size="sm" onClick={() => setOpenId(open ? null : tool.id)}>
-                      {open ? "Close preview" : "Preview"}
-                    </Button>
-                    <ShareMenu url={`/tools/${tool.id}`} title={tool.name} />
-                    <ButtonLink href={`/tools/${tool.id}`} variant="ink" size="sm">
-                      Open
-                    </ButtonLink>
-                  </div>
-                </div>
 
-                {open && (
-                  <div className="animate-reveal mt-8 md:ml-[3.2rem]">
-                    <iframe
-                      src={`/tools/${tool.id}`}
-                      title={`Preview of ${tool.name}`}
-                      className="h-[30rem] w-full rounded-[20px] border border-border bg-card/60 shadow-soft"
-                    />
-                  </div>
-                )}
-              </article>
-            );
-          })
+                  {open && (
+                    <div className="animate-reveal border-t border-border p-3">
+                      <iframe
+                        src={`/tools/${tool.id}`}
+                        title={`Preview of ${tool.name}`}
+                        className="h-96 w-full rounded-[14px] border border-border bg-card/60"
+                      />
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
         )}
       </section>
     </div>

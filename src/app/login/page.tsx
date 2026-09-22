@@ -32,6 +32,7 @@ function LoginPageInner() {
     : null;
 
   const [mode, setMode] = useState<Mode>("signin");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [sent, setSent] = useState(false);
@@ -47,7 +48,7 @@ function LoginPageInner() {
       await fetch("/api/ensure-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invite }),
+        body: JSON.stringify({ invite, name }),
       });
     } catch {
       // Non-fatal — gallery/builder still work, just without a workspace
@@ -66,6 +67,7 @@ function LoginPageInner() {
       if (mode === "signup") {
         const emailRedirectTo = new URL("/auth/callback", window.location.origin);
         if (invite) emailRedirectTo.searchParams.set("invite", invite);
+        if (name) emailRedirectTo.searchParams.set("name", name);
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -94,6 +96,7 @@ function LoginPageInner() {
     setError(null);
     const redirectTo = new URL("/auth/callback", window.location.origin);
     if (invite) redirectTo.searchParams.set("invite", invite);
+    if (name) redirectTo.searchParams.set("name", name);
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
@@ -132,6 +135,16 @@ function LoginPageInner() {
           ) : (
             <div className="mt-10 space-y-5">
               <label className="block text-xs font-medium">
+                Name (optional)
+                <input
+                  type="text"
+                  className="field mt-1"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Only used if this is a new account"
+                />
+              </label>
+              <label className="block text-xs font-medium">
                 Email
                 <input type="email" className="field mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
               </label>
@@ -145,6 +158,12 @@ function LoginPageInner() {
           )
         ) : (
           <div className="mt-10 space-y-5">
+            {mode === "signup" && (
+              <label className="block text-xs font-medium">
+                Name
+                <input type="text" className="field mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+              </label>
+            )}
             <label className="block text-xs font-medium">
               Email
               <input type="email" className="field mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -165,7 +184,7 @@ function LoginPageInner() {
               size="lg"
               className="w-full"
               onClick={submitPassword}
-              disabled={loading || !email || password.length < 8}
+              disabled={loading || !email || password.length < 8 || (mode === "signup" && !name.trim())}
             >
               {loading ? "Working…" : mode === "signup" ? "Create account" : "Sign in"}
             </Button>

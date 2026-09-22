@@ -22,6 +22,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const invite = url.searchParams.get("invite");
+  const name = url.searchParams.get("name");
   const next = safeNextPath(url.searchParams.get("next"));
 
   if (!code) {
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?error=no_user", url.origin));
   }
 
-  const result = await ensureProfile(supabase, user.id, user.email, invite);
+  const result = await ensureProfile(supabase, user.id, user.email, invite, name);
   if (!result.ok) {
     return NextResponse.redirect(new URL(`/login?error=${result.error}`, url.origin));
   }

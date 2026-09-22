@@ -20,14 +20,16 @@ export async function POST(request: Request) {
   }
 
   let invite: string | undefined;
+  let name: string | undefined;
   try {
     const body = await request.json();
     if (typeof body?.invite === "string") invite = body.invite;
+    if (typeof body?.name === "string") name = body.name;
   } catch {
-    // no body / not JSON — fine, invite is optional
+    // no body / not JSON — fine, both are optional
   }
 
-  const result = await ensureProfile(supabase, user.id, user.email, invite);
+  const result = await ensureProfile(supabase, user.id, user.email, invite, name);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
