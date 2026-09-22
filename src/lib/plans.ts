@@ -1,5 +1,5 @@
 // Single source of truth for what Free vs Pro actually means — referenced
-// by the generate-schema rate limiter, the pricing page, and anywhere else
+// by the generate-app rate limiter, the pricing page, and anywhere else
 // that needs to display or reason about plan limits. The tool-count limit
 // is also enforced independently in Postgres (migration 0012's
 // enforce_tool_limit trigger) since that check needs to run at insert time

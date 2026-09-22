@@ -96,8 +96,9 @@ Beyond the original six-block minimum, the engine now supports:
   in whichever view shows that table, not as a floating button, since they
   need a specific row to act on.
 
-`/api/generate-schema`'s system prompt knows about all of this, so
-Claude-generated schemas can use the full variety, not just the original six.
+This variety is available when hand-building a tool in the Builder; the AI
+generator (`/generate`) no longer targets this block vocabulary at all — see
+"Generated apps" below.
 
 ## Pricing
 
@@ -116,7 +117,7 @@ until it is applied. Each generation or requested change counts as one generatio
 Tool limits are enforced in Postgres (migration 0012's `enforce_tool_limit`
 trigger, tightened to 1 free tool by migration 0013 — holds regardless of
 which client creates a tool). AI generation
-limits are enforced in `/api/generate-schema` two ways: a flat 10/hour abuse
+limits are enforced in `/api/generate-app` two ways: a flat 10/hour abuse
 guard for everyone, and the real plan-based monthly quota above. The Pro
 automation cap is enforced in Postgres too (migration 0014's
 `enforce_automation_limit` trigger) — a hard cap, not a monthly quota, since
@@ -178,12 +179,8 @@ Both paths share the same generation logic in `src/lib/automationRunner.ts`.
 - **`rule` blocks are not enforced.** The engine renders them as a passive
   note ("when X, then Y") but nothing actually runs a check or sends a
   notification — that needs a cron/push-notification backend that's out of
-  scope for the engine as specified.
-- The prompt-to-schema route (`/api/generate-schema`) uses `claude-opus-5`
-  with plain JSON-in-the-prompt instructions rather than the Messages API's
-  structured-output mode — swap to `output_config.format` if you want the
-  API itself to guarantee schema-valid JSON instead of relying on
-  prompt-following + the Zod validation pass.
+  scope for the engine as specified. (`automation` blocks are the enforced
+  version of this idea — see "Automation blocks" above.)
 
 ## Project layout
 
@@ -197,8 +194,7 @@ src/components/renderer/       Phase 1 engine (ToolRenderer + block renderers)
 src/components/builder/        Phase 2 block editor
 src/app/tools/demo/            Phase 1 hard-coded demo
 src/app/builder/               Phase 2 manual builder
-src/app/generate/              Phase 3 prompt-to-schema UI
-src/app/api/generate-schema/   Phase 3 Anthropic API route (block-tool schemas; no longer used by /generate)
+src/app/generate/              AI app generator UI — describe it, get a complete app
 src/app/api/generate-app/      Streams a complete single-file app from a prompt (or applies a change to one)
 src/components/AppFrame.tsx    Runs a generated app in a sandboxed iframe (no network, private per-user storage)
 src/app/login/, /auth/callback/  Phase 4 magic-link auth + workspace join/create
