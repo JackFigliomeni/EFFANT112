@@ -102,18 +102,6 @@
   100% { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes bubble-drift-a {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  35% { transform: translate3d(7rem, 3rem, 0) scale(1.12); }
-  70% { transform: translate3d(-2rem, 8rem, 0) scale(.92); }
-}
-
-@keyframes bubble-drift-b {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(.9); }
-  40% { transform: translate3d(-9rem, 5rem, 0) scale(1.08); }
-  75% { transform: translate3d(3rem, -4rem, 0) scale(1); }
-}
-
 @keyframes orbit-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 @keyframes orbit-spin-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }
 @keyframes node-pulse { 50% { transform: scale(1.35); opacity: .55; } }
