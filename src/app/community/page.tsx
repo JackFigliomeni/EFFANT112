@@ -95,50 +95,52 @@ export default function CommunityPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 border-t border-border pt-9 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 border-t border-border pt-9 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {filtered.map((tool, index) => {
               const open = openId === tool.id;
               return (
                 <article
                   key={tool.id}
-                  className="animate-reveal flex flex-col overflow-hidden rounded-[20px] border border-border bg-card/60 shadow-soft"
+                  className="animate-reveal flex flex-col overflow-hidden rounded-2xl border border-border bg-card/60 shadow-soft"
                   style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
                 >
                   <Link href={`/tools/${tool.id}`} className="block aspect-square w-full overflow-hidden bg-muted">
                     <img
-                      src={`/api/tool-icon/${tool.id}?size=400`}
+                      src={`/api/tool-icon/${tool.id}?size=200`}
                       alt=""
                       className="size-full object-cover transition-transform hover:scale-105"
                     />
                   </Link>
-                  <div className="flex flex-1 flex-col gap-2 p-5">
-                    <Link href={`/tools/${tool.id}`} className="text-lg font-semibold leading-tight tracking-tight hover:underline">
+                  <div className="flex flex-1 flex-col gap-1 p-3">
+                    <Link href={`/tools/${tool.id}`} className="text-sm font-semibold leading-tight tracking-tight hover:underline">
                       {tool.name}
                     </Link>
-                    {tool.description && (
-                      <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{tool.description}</p>
-                    )}
-                    <p className="mt-auto pt-2 font-mono text-[9px] uppercase text-muted-foreground">
-                      {tool.author && `By ${tool.author} · `}
+                    <p className="mt-auto pt-1 font-mono text-[8px] uppercase leading-snug text-muted-foreground">
+                      {tool.author && (
+                        <>
+                          By {tool.author}
+                          <br />
+                        </>
+                      )}
                       {new Date(tool.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
                     </p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <Button variant="quiet" size="sm" onClick={() => setOpenId(open ? null : tool.id)}>
+                    <div className="flex flex-wrap items-center gap-1 pt-1">
+                      <Button variant="quiet" size="sm" className="px-2 text-[11px]" onClick={() => setOpenId(open ? null : tool.id)}>
                         {open ? "Close" : "Preview"}
                       </Button>
                       <ShareMenu url={`/tools/${tool.id}`} title={tool.name} />
-                      <ButtonLink href={`/tools/${tool.id}`} variant="ink" size="sm" className="ml-auto">
+                      <ButtonLink href={`/tools/${tool.id}`} variant="ink" size="sm" className="ml-auto px-2 text-[11px]">
                         Open
                       </ButtonLink>
                     </div>
                   </div>
 
                   {open && (
-                    <div className="animate-reveal border-t border-border p-3">
+                    <div className="animate-reveal border-t border-border p-2">
                       <iframe
                         src={`/tools/${tool.id}`}
                         title={`Preview of ${tool.name}`}
-                        className="h-96 w-full rounded-[14px] border border-border bg-card/60"
+                        className="h-64 w-full rounded-[10px] border border-border bg-card/60"
                       />
                     </div>
                   )}
