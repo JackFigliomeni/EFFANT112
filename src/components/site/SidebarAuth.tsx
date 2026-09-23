@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ButtonLink } from "@/components/ui/button";
 import { SignOutButton } from "@/components/SignOutButton";
-import { PostHogIdentify } from "@/components/PostHogIdentify";
 
 /**
  * Pinned under the sidebar's nav links (and mirrored in the mobile drawer):
@@ -25,7 +24,6 @@ export async function SidebarAuth() {
 
   return (
     <div className="flex items-center justify-between gap-2 px-1">
-      <PostHogIdentify userId={user.id} email={user.email} />
       <span className="truncate text-[11px] text-muted-foreground">{user.email}</span>
       <SignOutButton />
     </div>
