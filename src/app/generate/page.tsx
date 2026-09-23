@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -35,6 +35,42 @@ const STAGES = ["Describe", "Build", "Use or refine"];
 
 type Result = { html: string; name: string; description: string };
 
+// The in-progress build is otherwise plain React state, which is gone the
+// instant this page unmounts — clicking any nav link, not just navigating
+// away on purpose, silently threw away a finished app before it was saved.
+// Mirroring it into sessionStorage (same mechanism BUILDER_PREFILL_KEY
+// already uses for a similar draft handoff) means a click-away, a refresh,
+// or an accidental back-button doesn't lose it — only the explicit "Delete
+// project" button does, and now that asks first.
+const DRAFT_KEY = "effant:generator-draft";
+type Draft = { prompt: string; result: Result | null; history: Result[]; accent: string };
+
+function loadDraft(): Draft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as Draft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(draft: Draft) {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Storage full/blocked (private browsing, etc.) — the page still works,
+    // it just won't survive a navigation away. Not worth surfacing an error for.
+  }
+}
+
+function clearDraft() {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Nothing to clean up if storage isn't available in the first place.
+  }
+}
+
 export default function GeneratePage() {
   const router = useRouter();
   const gen = useAppGeneration();
@@ -47,6 +83,35 @@ export default function GeneratePage() {
   const [accent, setAccent] = useState(DEFAULT_THEME_COLOR);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Restore a draft left from before this page was last unmounted. Runs once,
+  // after mount only — reading sessionStorage during the initial render would
+  // mismatch what the server rendered and break hydration.
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft?.result) {
+      setPrompt(draft.prompt);
+      setResult(draft.result);
+      setHistory(draft.history);
+      setAccent(draft.accent);
+    }
+    setHydrated(true);
+    // Intentionally once-only: this restores whatever was there on arrival,
+    // it doesn't re-sync if sessionStorage changes from elsewhere.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the draft current as the app is built on, refined, or restyled —
+  // but not before the initial restore above has had its turn, or this
+  // would immediately overwrite a just-loaded draft with the still-empty
+  // initial state.
+  useEffect(() => {
+    if (!hydrated) return;
+    if (result) saveDraft({ prompt, result, history, accent });
+    else clearDraft();
+  }, [hydrated, prompt, result, history, accent]);
 
   function toResult(html: string, fallbackName: string): Result {
     const meta = readAppMeta(html);
@@ -80,11 +145,13 @@ export default function GeneratePage() {
     });
   }
 
-  function startOver() {
+  function deleteProject() {
     setResult(null);
     setHistory([]);
     setChange("");
+    setConfirmingDelete(false);
     gen.setError(null);
+    clearDraft();
   }
 
   function openInBuilder() {
@@ -123,6 +190,9 @@ export default function GeneratePage() {
         setSaveError(res.error?.message ?? "Couldn't save.");
         return;
       }
+      // It's a real saved tool now — leaving the draft around would make it
+      // reappear as an "unsaved" app next visit, inviting a second, duplicate save.
+      clearDraft();
       router.push(`/tools/${res.data.id}`);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Couldn't save.");
@@ -238,12 +308,32 @@ export default function GeneratePage() {
         <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-5">
           {result ? (
             <div className="flex items-center gap-1">
-              <Button variant="quiet" size="sm" onClick={startOver} disabled={gen.building}>
-                Start over
-              </Button>
-              <Button variant="quiet" size="sm" onClick={undo} disabled={gen.building || history.length === 0}>
-                Undo last change
-              </Button>
+              {!confirmingDelete ? (
+                <Button
+                  variant="quiet"
+                  size="sm"
+                  onClick={() => setConfirmingDelete(true)}
+                  disabled={gen.building}
+                  className="text-destructive hover:text-destructive"
+                >
+                  Delete project
+                </Button>
+              ) : (
+                <span className="flex items-center gap-2 text-xs">
+                  Delete this project?
+                  <Button variant="destructive" size="sm" onClick={deleteProject}>
+                    Yes, delete
+                  </Button>
+                  <Button variant="quiet" size="sm" onClick={() => setConfirmingDelete(false)}>
+                    Cancel
+                  </Button>
+                </span>
+              )}
+              {!confirmingDelete && (
+                <Button variant="quiet" size="sm" onClick={undo} disabled={gen.building || history.length === 0}>
+                  Undo last change
+                </Button>
+              )}
             </div>
           ) : (
             <span className="text-xs text-muted-foreground">Any app you can put into words.</span>
