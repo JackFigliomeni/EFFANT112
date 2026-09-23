@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
@@ -31,7 +32,7 @@ function LoginPageInner() {
     ? CALLBACK_ERROR_MESSAGES[callbackErrorCode] ?? decodeURIComponent(callbackErrorCode)
     : null;
 
-  const [mode, setMode] = useState<Mode>("signin");
+  const [mode, setMode] = useState<Mode>(searchParams.get("mode") === "signup" ? "signup" : "signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +41,15 @@ function LoginPageInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function afterSignedIn() {
+  async function afterSignedIn(eventName: "user_signed_in" | "user_signed_up") {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      posthog.identify(user.id, { email: user.email, name: name.trim() || undefined });
+      posthog.capture(eventName, { authentication_method: "password" });
+    }
+
     // Password sign-in/sign-up don't go through /auth/callback (that's only
     // hit by email links), so the workspace-bootstrap step has to be
     // triggered explicitly here instead.
@@ -76,14 +85,14 @@ function LoginPageInner() {
         if (error) {
           setError(error.message);
         } else if (data.session) {
-          await afterSignedIn();
+          await afterSignedIn("user_signed_up");
         } else {
           setConfirmSent(true);
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) setError(error.message);
-        else await afterSignedIn();
+        else await afterSignedIn("user_signed_in");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't reach Supabase.");
@@ -103,10 +112,14 @@ function LoginPageInner() {
         options: { emailRedirectTo: redirectTo.toString() },
       });
       if (error) setError(error.message);
-      else setSent(true);
+      else {
+        posthog.capture("magic_link_requested", { has_workspace_invite: Boolean(invite) });
+        setSent(true);
+      }
     } catch (err) {
       // A rejected fetch throws instead of returning {error} — without this
       // the button would silently do nothing.
+      posthog.captureException(err);
       setError(err instanceof Error ? err.message : "Couldn't reach Supabase.");
     }
   }

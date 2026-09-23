@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ToolSchema, TableBlock, ActionBlock, AppBlock } from "@/lib/schema";
 import { ViewBlockRenderer } from "./blocks/ViewBlockRenderer";
@@ -40,6 +40,10 @@ export function ToolRenderer({
   const [draft, setDraft] = useState<Record<string, unknown>>({});
   const [rowsByTable, setRowsByTable] = useState<Record<string, Row[]>>({});
   const [status, setStatus] = useState<string | null>(null);
+  // Each signed-in person keeps their own rows in a shared tool (see
+  // tool_records_own_all in migration 0019) — a public tool is something
+  // anyone can use, not a window into the owner's personal data.
+  const userIdRef = useRef<string | null>(null);
 
   const tableBlocks = schema.blocks.filter((b): b is TableBlock => b.type === "table");
   const actionBlocks = schema.blocks.filter((b): b is ActionBlock => b.type === "action");
@@ -48,11 +52,22 @@ export function ToolRenderer({
     async (tableId: string) => {
       if (!toolId) return;
       try {
+        if (!userIdRef.current) {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          userIdRef.current = user?.id ?? null;
+        }
+        if (!userIdRef.current) {
+          setRowsByTable((prev) => ({ ...prev, [tableId]: [] }));
+          return;
+        }
         const { data, error } = await supabase
           .from("tool_records")
           .select("id, data, created_at")
           .eq("tool_id", toolId)
           .eq("table_id", tableId)
+          .eq("user_id", userIdRef.current)
           .order("created_at", { ascending: false });
 
         if (error) {
@@ -93,10 +108,16 @@ export function ToolRenderer({
       return;
     }
 
+    if (!userIdRef.current) {
+      setStatus("Sign in to save your own data here.");
+      return;
+    }
+
     try {
       const { error } = await supabase.from("tool_records").insert({
         tool_id: toolId,
         table_id: tableId,
+        user_id: userIdRef.current,
         data,
       });
       if (error) {

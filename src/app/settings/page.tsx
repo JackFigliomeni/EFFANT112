@@ -84,7 +84,11 @@ export default function SettingsPage() {
           .from("workspaces")
           .update({ name: newWorkspaceName })
           .eq("id", workspaceId);
-        if (!workspaceError) setWorkspaceName(newWorkspaceName);
+        if (workspaceError) {
+          setNameMessage(`Name saved, but couldn't rename your workspace: ${workspaceError.message}`);
+          return;
+        }
+        setWorkspaceName(newWorkspaceName);
       }
       setNameMessage("Saved.");
     } catch (err) {

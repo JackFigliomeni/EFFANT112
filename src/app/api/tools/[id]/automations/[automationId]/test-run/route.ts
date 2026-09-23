@@ -75,6 +75,7 @@ export async function POST(
     .select("data")
     .eq("tool_id", tool.id)
     .eq("table_id", automation.target)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(14);
 
@@ -100,7 +101,7 @@ export async function POST(
 
   const { error: insertError } = await supabase
     .from("tool_records")
-    .insert({ tool_id: tool.id, table_id: automation.target, data });
+    .insert({ tool_id: tool.id, table_id: automation.target, user_id: user.id, data });
   if (insertError) {
     return NextResponse.json({ error: `Couldn't save the result: ${insertError.message}` }, { status: 500 });
   }

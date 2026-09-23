@@ -30,9 +30,6 @@ export default function Home() {
         <div className="mt-16">
           <BuildTimeline />
         </div>
-        <ButtonLink href="/community" variant="glass" className="mt-16">
-          Explore community tools
-        </ButtonLink>
       </div>
     </>
   );

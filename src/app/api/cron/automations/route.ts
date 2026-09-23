@@ -67,6 +67,7 @@ export async function GET(request: Request) {
           .select("data")
           .eq("tool_id", tool.id)
           .eq("table_id", automation.target)
+          .eq("user_id", tool.owner_id)
           .order("created_at", { ascending: false })
           .limit(14);
         const data = await generateAutomationRecord(
@@ -78,7 +79,7 @@ export async function GET(request: Request) {
         );
         const { error: insertError } = await admin
           .from("tool_records")
-          .insert({ tool_id: tool.id, table_id: automation.target, data });
+          .insert({ tool_id: tool.id, table_id: automation.target, user_id: tool.owner_id, data });
         if (insertError) throw new Error(insertError.message);
         results.push({ tool_id: tool.id, automation_id: automation.id, status: "ok" });
       } catch (err) {
