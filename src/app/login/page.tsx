@@ -3,7 +3,6 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
@@ -41,15 +40,7 @@ function LoginPageInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function afterSignedIn(eventName: "user_signed_in" | "user_signed_up") {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      posthog.identify(user.id, { email: user.email, name: name.trim() || undefined });
-      posthog.capture(eventName, { authentication_method: "password" });
-    }
-
+  async function afterSignedIn() {
     // Password sign-in/sign-up don't go through /auth/callback (that's only
     // hit by email links), so the workspace-bootstrap step has to be
     // triggered explicitly here instead.
@@ -85,14 +76,14 @@ function LoginPageInner() {
         if (error) {
           setError(error.message);
         } else if (data.session) {
-          await afterSignedIn("user_signed_up");
+          await afterSignedIn();
         } else {
           setConfirmSent(true);
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) setError(error.message);
-        else await afterSignedIn("user_signed_in");
+        else await afterSignedIn();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't reach Supabase.");
@@ -112,14 +103,10 @@ function LoginPageInner() {
         options: { emailRedirectTo: redirectTo.toString() },
       });
       if (error) setError(error.message);
-      else {
-        posthog.capture("magic_link_requested", { has_workspace_invite: Boolean(invite) });
-        setSent(true);
-      }
+      else setSent(true);
     } catch (err) {
       // A rejected fetch throws instead of returning {error} — without this
       // the button would silently do nothing.
-      posthog.captureException(err);
       setError(err instanceof Error ? err.message : "Couldn't reach Supabase.");
     }
   }

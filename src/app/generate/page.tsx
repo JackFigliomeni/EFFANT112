@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AccentPicker } from "@/components/AccentPicker";
@@ -125,7 +124,6 @@ export default function GeneratePage() {
     setVersion((v) => v + 1);
     setTab("preview");
     setChange("");
-    posthog.capture("app_generated", { output_size: html.length });
   }
 
   async function applyChange() {
@@ -135,7 +133,6 @@ export default function GeneratePage() {
     setHistory((h) => [...h, result]);
     setResult(toResult(html, result.name));
     setChange("");
-    posthog.capture("app_refined", { output_size: html.length, revision_number: history.length + 1 });
   }
 
   function undo() {
