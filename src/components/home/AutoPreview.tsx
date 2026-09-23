@@ -32,19 +32,17 @@ export function AutoPreview() {
 
   const current = SCENES[scene];
   return (
-    <div ref={ref} className="relative mx-auto min-h-[28rem] max-w-4xl py-14">
-      <div className="relative grid min-h-[22rem] items-center gap-8 md:grid-cols-[.75fr_1.25fr]">
-        <div className="z-10 text-left">
-          <span className="font-mono text-[10px] uppercase text-signal">Live sequence 0{scene + 1}</span>
-          <p className="mt-4 max-w-xs font-display text-2xl font-semibold">{current.label}</p>
-          <div className="mt-8 flex gap-2">
-            {SCENES.map((item, index) => (
-              <span key={item.label} className={`h-1 w-10 transition-colors ${index === scene ? "bg-foreground" : "bg-border"}`} />
-            ))}
-          </div>
-        </div>
-        <div className="relative">
-          <ToolGlyph core={current.core} nodes={scene + 2} />
+    <div ref={ref} className="relative mx-auto flex min-h-[32rem] max-w-lg flex-col items-center py-14 text-center">
+      <div className="relative w-full">
+        <ToolGlyph core={current.core} nodes={scene + 3} />
+      </div>
+      <div className="z-10 mt-6">
+        <span className="font-mono text-[10px] uppercase text-signal">Live sequence 0{scene + 1}</span>
+        <p className="mt-4 font-display text-2xl font-semibold sm:text-3xl">{current.label}</p>
+        <div className="mt-7 flex justify-center gap-2">
+          {SCENES.map((item, index) => (
+            <span key={item.label} className={`h-1 w-10 transition-colors ${index === scene ? "bg-foreground" : "bg-border"}`} />
+          ))}
         </div>
       </div>
     </div>

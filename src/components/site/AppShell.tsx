@@ -13,6 +13,7 @@ export const NAV_ITEMS = [
   { href: "/community", label: "Community" },
   { href: "/publish", label: "Publish" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/settings", label: "Settings" },
 ];
 
 // The marketing homepage and the auth flow keep their own minimal chrome —
@@ -104,7 +105,7 @@ export function AppShell({
   return (
     <div className="relative z-10 mx-auto flex max-w-[90rem]">
       <aside className="site-chrome sticky top-0 hidden h-screen w-56 shrink-0 flex-col gap-8 border-r border-border/70 px-4 py-6 sm:flex">
-        <BrandLink href="/gallery" />
+        <BrandLink href="/" />
         <div className="flex-1">
           <NavLinks pathname={pathname} />
         </div>
@@ -113,7 +114,7 @@ export function AppShell({
 
       <div className="min-w-0 flex-1">
         <div className="site-chrome flex items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:hidden">
-          <BrandLink href="/gallery" />
+          <BrandLink href="/" />
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
@@ -135,7 +136,7 @@ export function AppShell({
           <div className="absolute inset-0 bg-foreground/20" onClick={() => setDrawerOpen(false)} />
           <div className="absolute inset-y-0 left-0 flex w-64 flex-col gap-8 bg-card px-4 py-6 shadow-soft">
             <div className="flex items-center justify-between">
-              <BrandLink href="/gallery" onClick={() => setDrawerOpen(false)} />
+              <BrandLink href="/" onClick={() => setDrawerOpen(false)} />
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}

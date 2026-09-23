@@ -5,8 +5,9 @@ import { PostHogIdentify } from "@/components/PostHogIdentify";
 
 /**
  * Pinned under the sidebar's nav links (and mirrored in the mobile drawer):
- * Settings plus a compact account row. Server Component so only this piece
- * opts into dynamic rendering (see AppShell / root layout).
+ * a compact account row — Settings itself lives in the nav list above.
+ * Server Component so only this piece opts into dynamic rendering (see
+ * AppShell / root layout).
  */
 export async function SidebarAuth() {
   const supabase = await createClient();
@@ -23,15 +24,10 @@ export async function SidebarAuth() {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex items-center justify-between gap-2 px-1">
       <PostHogIdentify userId={user.id} email={user.email} />
-      <ButtonLink href="/settings" variant="quiet" size="sm" className="w-full">
-        Settings
-      </ButtonLink>
-      <div className="flex items-center justify-between gap-2 px-1">
-        <span className="truncate text-[11px] text-muted-foreground">{user.email}</span>
-        <SignOutButton />
-      </div>
+      <span className="truncate text-[11px] text-muted-foreground">{user.email}</span>
+      <SignOutButton />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AccentPicker } from "@/components/AccentPicker";
@@ -30,8 +31,6 @@ const CHANGE_IDEAS = [
   "Add export and import of my data",
   "Make it simpler and cleaner",
 ];
-
-const STAGES = ["Describe", "Build", "Use or refine"];
 
 type Result = { html: string; name: string; description: string };
 
@@ -126,6 +125,7 @@ export default function GeneratePage() {
     setVersion((v) => v + 1);
     setTab("preview");
     setChange("");
+    posthog.capture("app_generated", { output_size: html.length });
   }
 
   async function applyChange() {
@@ -135,6 +135,7 @@ export default function GeneratePage() {
     setHistory((h) => [...h, result]);
     setResult(toResult(html, result.name));
     setChange("");
+    posthog.capture("app_refined", { output_size: html.length, revision_number: history.length + 1 });
   }
 
   function undo() {
@@ -201,24 +202,10 @@ export default function GeneratePage() {
     }
   }
 
-  const stage = gen.building ? 1 : result ? 2 : 0;
   const errorText = gen.error;
 
   return (
     <section className="workspace generator-workspace">
-      <aside className="workspace-rail">
-        <span className="font-mono text-[9px] uppercase text-muted-foreground">Generator</span>
-        <h1 className="mt-3 text-xl font-semibold">Describe it. It&rsquo;s built on the spot.</h1>
-        <div className="stage-track">
-          {STAGES.map((item, index) => (
-            <div key={item} className={`stage-node ${stage === index ? "is-active" : ""}`}>
-              <span>{index + 1}</span>
-              {item}
-            </div>
-          ))}
-        </div>
-      </aside>
-
       <section className="workspace-controls">
         {!result ? (
           <>
@@ -229,7 +216,7 @@ export default function GeneratePage() {
                 onChange={(e) => setPrompt(e.target.value)}
                 disabled={gen.building}
                 placeholder="Describe the app you want. The more you say about what it should do, the better it gets…"
-                className="min-h-[14rem] w-full flex-1 resize-none rounded-[20px] border border-border bg-card/70 p-5 text-lg leading-relaxed shadow-soft outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground disabled:opacity-60"
+                className="min-h-[26rem] w-full flex-1 resize-none rounded-[20px] border border-border bg-card/70 p-5 text-lg leading-relaxed shadow-soft outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground disabled:opacity-60"
               />
               <div className="mt-4 flex flex-wrap gap-2">
                 {EXAMPLE_PROMPTS.map((example) => (

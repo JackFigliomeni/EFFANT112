@@ -36,14 +36,16 @@ function CoreMark({ kind }: { kind: CoreKind }) {
 
 export function ToolGlyph({ core = "prompt", nodes = 3, compact = false }: { core?: CoreKind; nodes?: number; compact?: boolean }) {
   return (
-    <div className={`tool-glyph ${compact ? "h-44" : "h-72"}`} aria-hidden="true">
+    <div className={`tool-glyph ${compact ? "h-44" : "h-80"}`} aria-hidden="true">
+      <div className="glyph-orbit-three" />
       <div className="glyph-orbit glyph-orbit-one" />
       <div className="glyph-orbit glyph-orbit-two" />
+      <div className="glyph-inner-orbit" />
       <div className="glyph-core">
         <CoreMark kind={core} />
       </div>
-      {Array.from({ length: Math.max(2, nodes) }).map((_, index) => (
-        <span key={index} className={`glyph-node glyph-node-${(index % 4) + 1}`} />
+      {Array.from({ length: Math.min(6, Math.max(2, nodes)) }).map((_, index) => (
+        <span key={index} className={`glyph-node glyph-node-${(index % 6) + 1}`} />
       ))}
     </div>
   );

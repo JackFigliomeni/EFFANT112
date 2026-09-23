@@ -105,6 +105,7 @@
 @keyframes orbit-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 @keyframes orbit-spin-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }
 @keyframes node-pulse { 50% { transform: scale(1.35); opacity: .55; } }
+@keyframes core-breathe { 0%, 100% { transform: translate(-50%, -50%) rotate(8deg) scale(1); } 50% { transform: translate(-50%, -50%) rotate(8deg) scale(1.06); } }
 @keyframes caret-blink { 50% { opacity: 0; } }
 @keyframes sweep { from { transform: translateX(-120%); } to { transform: translateX(420%); } }
 @keyframes room-drift {
@@ -157,25 +158,29 @@
 .glyph-orbit::after { content:""; position:absolute; left:12%; top:8%; width:.65rem; height:.65rem; border-radius:999px; background:var(--signal); box-shadow:0 0 0 .45rem color-mix(in oklab,var(--signal) 14%,transparent); }
 .glyph-orbit-one { width: 72%; height: 62%; border-radius: 50% 38% 52% 44%; animation: orbit-spin 18s linear infinite; }
 .glyph-orbit-two { width: 48%; height: 82%; border-radius: 42% 58% 38% 62%; border-style: dashed; animation: orbit-spin-reverse 25s linear infinite; }
-.glyph-core { position:absolute; left:50%; top:50%; display:grid; place-items:center; width:5rem; height:5rem; transform:translate(-50%,-50%) rotate(8deg); border:1px solid var(--border); border-radius:34% 66% 58% 42%; background:color-mix(in oklab,var(--card) 92%,transparent); color:var(--foreground); box-shadow:var(--shadow-soft); }
+/* A third, wider ring with no dot of its own — pure depth, keeps the two
+   dotted orbits above from feeling like the whole story. */
+.glyph-orbit-three { position:absolute; left:50%; top:50%; width:94%; height:94%; border:1px dotted color-mix(in oklab,var(--border) 70%,transparent); border-radius:46% 54% 42% 58%; transform:translate(-50%,-50%); animation: orbit-spin 34s linear infinite; opacity:.65; }
+/* A tight satellite ring hugging the core itself, so something keeps moving
+   at the center even between scene changes, not just around the outside. */
+.glyph-inner-orbit { position:absolute; left:50%; top:50%; width:7rem; height:7rem; border:1px dashed color-mix(in oklab,var(--foreground) 18%,transparent); border-radius:50%; transform:translate(-50%,-50%); animation: orbit-spin 5s linear infinite; }
+.glyph-inner-orbit::after { content:""; position:absolute; left:50%; top:-.28rem; width:.5rem; height:.5rem; border-radius:999px; background:var(--cool); box-shadow:0 0 0 .3rem color-mix(in oklab,var(--cool) 20%,transparent); transform:translateX(-50%); }
+.glyph-core { position:absolute; left:50%; top:50%; display:grid; place-items:center; width:5rem; height:5rem; transform:translate(-50%,-50%) rotate(8deg); border:1px solid var(--border); border-radius:34% 66% 58% 42%; background:color-mix(in oklab,var(--card) 92%,transparent); color:var(--foreground); box-shadow:var(--shadow-soft); animation: core-breathe 4.5s ease-in-out infinite; }
 .glyph-node { position:absolute; width:1.1rem; height:1.1rem; border-radius:999px; animation:node-pulse 3s ease-in-out infinite; }
 .glyph-node-1 { left:20%; top:24%; background:var(--signal); }
 .glyph-node-2 { right:17%; top:35%; background:var(--cool); animation-delay:.7s; }
 .glyph-node-3 { left:35%; bottom:12%; background:var(--fresh); animation-delay:1.4s; }
 .glyph-node-4 { right:34%; top:12%; background:var(--foreground); animation-delay:2.1s; }
+.glyph-node-5 { left:8%; top:52%; background:var(--cool); animation-delay:.35s; }
+.glyph-node-6 { right:6%; bottom:20%; background:var(--signal); animation-delay:1.8s; }
 
 /* ---- workspace layout (builder / generator / publish) ---- */
 .workspace { min-height:calc(100vh - 6rem); display:grid; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:color-mix(in oklab,var(--background) 86%,transparent); }
-.generator-workspace { grid-template-columns:minmax(11rem,.5fr) minmax(19rem,1fr) minmax(24rem,1.7fr); }
+.generator-workspace { grid-template-columns:minmax(22rem,1.6fr) minmax(24rem,1.7fr); }
 .builder-workspace { grid-template-columns:minmax(13rem,.72fr) minmax(24rem,1.5fr) minmax(17rem,.9fr); }
 .workspace-rail,.workspace-controls,.workspace-test,.workspace-canvas { position:relative; min-width:0; padding:2rem; }
 .workspace-rail,.workspace-controls,.workspace-canvas { border-right:1px solid var(--border); }
 .workspace-rail,.workspace-test { display:flex; flex-direction:column; }
-.stage-track { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:1.5rem; margin-top:4rem; }
-.stage-track::before { content:""; position:absolute; left:1.1rem; top:1rem; bottom:1rem; border-left:1px dashed var(--border); }
-.stage-node { position:relative; z-index:1; display:flex; align-items:center; gap:.75rem; width:100%; font-size:.875rem; text-align:left; }
-.stage-node span:first-child { display:grid; width:2rem; height:2rem; flex-shrink:0; place-items:center; border:1px solid var(--border); border-radius:50%; background:var(--background); font:9px var(--font-jetbrains-mono), monospace; }
-.stage-node.is-active span:first-child { border-color:var(--signal); background:var(--signal); color:var(--signal-foreground); }
 .workspace-controls { display:flex; flex-direction:column; overflow:hidden; }
 .control-kicker { font-size:.68rem; font-family:var(--font-jetbrains-mono), monospace; text-transform:uppercase; color:var(--muted-foreground); }
 .privacy-switch { display:inline-flex; gap:.25rem; padding:.25rem; border:1px solid var(--border); border-radius:999px; }
@@ -224,11 +229,6 @@
   .generator-workspace,.builder-workspace { grid-template-columns:1fr; }
   .workspace-rail,.workspace-controls,.workspace-canvas { border-right:0; border-bottom:1px solid var(--border); }
   .workspace { min-height:auto; }
-  .stage-track { margin-top:2rem; flex-direction:row; overflow:auto; }
-  .stage-track::before { left:1rem; right:1rem; top:1rem; bottom:auto; border-left:0; border-top:1px dashed var(--border); }
-  /* In row layout each node must size to its own text, not share width:100%
-     of the row — otherwise words like "refine" get squeezed and break mid-word. */
-  .stage-node { width:auto; flex:0 0 auto; white-space:nowrap; }
 }
 
 @media (max-width: 640px) {
