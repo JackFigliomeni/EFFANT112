@@ -52,11 +52,11 @@ export default async function ToolPage({ params }: { params: Promise<{ id: strin
   }
 
   if (error || !tool) {
+    if (error) console.error("tools/[id]: couldn't load tool", id, error.message);
     return (
       <div className="mx-auto max-w-lg py-24 text-sm">
         Couldn&rsquo;t load this tool — either it doesn&rsquo;t exist, or you don&rsquo;t have
         access to it.
-        {error && <p className="mt-2 text-muted-foreground">{error.message}</p>}
       </div>
     );
   }

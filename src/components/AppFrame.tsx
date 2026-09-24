@@ -37,6 +37,9 @@ export function AppFrame({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lsKey = `effant:app:${toolId ?? storageKey ?? "preview"}`;
   const [initialStore, setInitialStore] = useState<Store | null>(null);
+  // Surfaced when the remote save fails — otherwise it fails in a bare catch
+  // and the person has no idea their other devices stopped getting updates.
+  const [syncIssue, setSyncIssue] = useState<"full" | "error" | null>(null);
   const userIdRef = useRef<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const accentRef = useRef(accent);
@@ -96,11 +99,13 @@ export function AppFrame({
       clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
         try {
-          await supabase
+          const { error } = await supabase
             .from("app_state")
             .upsert({ tool_id: toolId, user_id: uid, data: m.store, updated_at: new Date().toISOString() }, { onConflict: "tool_id,user_id" });
+          setSyncIssue(error ? (error.message.includes("app_state_size_check") ? "full" : "error") : null);
         } catch {
           // best effort — localStorage already has it
+          setSyncIssue("error");
         }
       }, 1200);
     }
@@ -129,14 +134,28 @@ export function AppFrame({
     return <div className={`grid place-items-center text-xs text-muted-foreground ${className}`}>Loading…</div>;
   }
   return (
-    <iframe
-      ref={iframeRef}
-      title={title}
-      srcDoc={srcDoc}
-      sandbox="allow-scripts allow-modals allow-downloads"
-      allow="clipboard-write"
-      referrerPolicy="no-referrer"
-      className={`block w-full border-0 bg-white ${className}`}
-    />
+    <div className={`relative overflow-hidden ${className}`}>
+      <iframe
+        ref={iframeRef}
+        title={title}
+        srcDoc={srcDoc}
+        sandbox="allow-scripts allow-modals allow-downloads"
+        allow="clipboard-write"
+        referrerPolicy="no-referrer"
+        className="block h-full w-full border-0 bg-white"
+      />
+      {syncIssue && (
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-destructive/90 px-3 py-1.5 text-[10px] leading-snug text-destructive-foreground">
+          <span>
+            {syncIssue === "full"
+              ? "This app's saved data is full — new changes aren't syncing to your other devices."
+              : "Couldn't sync to your other devices just now — this one still has your changes."}
+          </span>
+          <button onClick={() => setSyncIssue(null)} className="shrink-0 underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

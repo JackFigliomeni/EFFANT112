@@ -52,6 +52,9 @@ function BuilderPageInner() {
   const [previewHtml, setPreviewHtml] = useState("");
   const [tab, setTab] = useState<"preview" | "design">("preview");
   const [status, setStatus] = useState<string | null>(null);
+  // Snapshot of the app's code from just before a hand edit — the raw
+  // textarea has no undo of its own, unlike AppAssistant's AI-refine flow.
+  const [preEditHtml, setPreEditHtml] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -59,6 +62,29 @@ function BuilderPageInner() {
   // insert gets tagged automatically. `plan` only drives the automation
   // test-run copy in the part editor.
   const [owner, setOwner] = useState<{ userId: string; workspaceId: string | null; plan: Plan } | null>(null);
+  type Revision = { id: string; name: string; schema: ToolSchema; theme_color: string | null; description: string | null; created_at: string };
+  const [revisions, setRevisions] = useState<Revision[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  async function loadRevisions() {
+    if (!toolId) return;
+    const { data } = await supabase
+      .from("tool_revisions")
+      .select("id, name, schema, theme_color, description, created_at")
+      .eq("tool_id", toolId)
+      .order("created_at", { ascending: false });
+    setRevisions((data as Revision[] | null) ?? []);
+  }
+
+  function restoreRevision(revision: Revision) {
+    setName(revision.name);
+    setBlocks(revision.schema.blocks);
+    setSelected(revision.schema.blocks.length > 0 ? 0 : null);
+    if (revision.theme_color) setThemeColor(revision.theme_color);
+    setDescription(revision.description ?? "");
+    setShowHistory(false);
+    setStatus("Restored — review it, then Save to keep it.");
+  }
 
   useEffect(() => {
     async function loadOwner() {
@@ -202,6 +228,7 @@ function BuilderPageInner() {
           );
         } else {
           setStatus(degraded ? `Saved.${NEEDS_MIGRATION}` : "Saved.");
+          setPreEditHtml(null);
         }
       } else {
         const base = { ...core, owner_id: owner?.userId ?? null, workspace_id: owner?.workspaceId ?? null };
@@ -216,6 +243,7 @@ function BuilderPageInner() {
           setStatus(`Save failed: ${error?.message ?? "unknown error"}`);
         } else {
           setStatus(degraded ? `Created.${NEEDS_MIGRATION}` : "Created.");
+          setPreEditHtml(null);
           setToolId(data.id);
           router.replace(`/builder?id=${data.id}`);
         }
@@ -255,6 +283,19 @@ function BuilderPageInner() {
     setBlocks((prev) => prev.map((b) => (b.type === "app" ? { ...b, html } : b)));
   }
 
+  // The first keystroke in a hand-editing session snapshots what was there
+  // before it, so a broken edit has a way back — onFocus rather than the
+  // first onChange, so even a single keystroke is covered.
+  function beginManualEdit() {
+    setPreEditHtml((prev) => prev ?? appBlock?.html ?? null);
+  }
+
+  function revertManualEdit() {
+    if (preEditHtml === null) return;
+    setAppHtml(preEditHtml);
+    setPreEditHtml(null);
+  }
+
   return (
     <section className="workspace builder-workspace">
       {/* left: the tool's name and its parts */}
@@ -270,7 +311,18 @@ function BuilderPageInner() {
           {appBlock ? "A complete app" : `${blocks.length} ${blocks.length === 1 ? "part" : "parts"}`}
         </p>
 
-        {appBlock && <AppAssistant html={appBlock.html} onChange={setAppHtml} />}
+        {appBlock && (
+          <AppAssistant
+            html={appBlock.html}
+            onChange={(html) => {
+              // An AI refine has its own undo (AppAssistant tracks that
+              // itself) — clear the manual-edit snapshot so "revert to
+              // before this edit" doesn't point past an unrelated change.
+              setPreEditHtml(null);
+              setAppHtml(html);
+            }}
+          />
+        )}
 
         {!appBlock && (
         <>
@@ -375,13 +427,21 @@ function BuilderPageInner() {
         </span>
         <div className="mt-6">
           {appBlock ? (
-            <textarea
-              value={appBlock.html}
-              onChange={(e) => setAppHtml(e.target.value)}
-              spellCheck={false}
-              aria-label="App code"
-              className="h-72 w-full resize-y rounded-[20px] border border-border bg-card/70 p-3 font-mono text-[10px] leading-relaxed outline-none focus:border-foreground"
-            />
+            <>
+              <textarea
+                value={appBlock.html}
+                onChange={(e) => setAppHtml(e.target.value)}
+                onFocus={beginManualEdit}
+                spellCheck={false}
+                aria-label="App code"
+                className="h-72 w-full resize-y rounded-[20px] border border-border bg-card/70 p-3 font-mono text-[10px] leading-relaxed outline-none focus:border-foreground"
+              />
+              {preEditHtml !== null && preEditHtml !== appBlock.html && (
+                <Button variant="quiet" size="sm" onClick={revertManualEdit} className="mt-2">
+                  Revert to before this edit
+                </Button>
+              )}
+            </>
           ) : selectedBlock && selected !== null ? (
             <BlockEditor
               key={selected}
@@ -416,6 +476,47 @@ function BuilderPageInner() {
             {!owner && " Sign in for this to apply to anyone else."}
           </p>
         </div>
+
+        {toolId && (
+          <div className="mt-10">
+            <div className="flex items-center justify-between">
+              <p className="control-kicker">History</p>
+              <Button
+                variant="quiet"
+                size="sm"
+                onClick={() => {
+                  if (!showHistory) loadRevisions();
+                  setShowHistory((v) => !v);
+                }}
+              >
+                {showHistory ? "Hide" : "Show"}
+              </Button>
+            </div>
+            {showHistory && (
+              <div className="mt-3 space-y-1">
+                {revisions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No earlier saved versions yet — each save keeps the last one.</p>
+                ) : (
+                  revisions.map((revision) => (
+                    <div key={revision.id} className="flex items-center justify-between gap-2 rounded-[10px] border border-border px-3 py-2 text-xs">
+                      <span className="text-muted-foreground">
+                        {new Date(revision.created_at).toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <Button variant="quiet" size="sm" onClick={() => restoreRevision(revision)}>
+                        Restore
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-auto pt-8">
           <div className="grid grid-cols-[1fr_auto] gap-2">
