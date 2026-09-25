@@ -14,6 +14,26 @@ const DEADLINE_MS = 270_000;
 const MAX_PROMPT = 3000;
 const MAX_HTML = 90000;
 
+// Backstop for the prompt's "never seed fake records" rule (src/lib/appPrompt.ts) —
+// a real generation shipped a fabricated client (name, company, email, phone,
+// address) baked into an "on first run" seed block, which is public source
+// code, not private data, so it showed identically to every visitor. The
+// prompt alone is a request the model can ignore; this catches the same
+// shape deterministically before the app ever ships. Two independent
+// signals, either is enough: (1) a name-like field sitting near both an
+// email and a phone/address field in an object literal — the fingerprint of
+// an invented contact record; (2) the seeding pattern itself (a comment or a
+// first-run guard), regardless of what fields it populates.
+const FAKE_CONTACT_PATTERN =
+  /\bname\s*:\s*['"][A-Z][a-z]+ [A-Z][a-z]+['"][^{}]{0,200}?\b(email|phone)\s*:\s*['"][^'"]{3,}['"][^{}]{0,200}?\b(email|phone|address)\s*:\s*['"][^'"]{3,}['"]/i;
+const SEED_MARKER_PATTERN = /seed(ed|ing)?\s+(sample|demo|example|initial)\s+data|on\s+(very\s+)?first\s+run|!\s*(?:store|storage|effant\.storage)\.get\(\s*['"]seeded['"]/i;
+
+function findSeededDataIssue(html: string): string | null {
+  if (FAKE_CONTACT_PATTERN.test(html)) return "invented contact details (a name paired with an email, phone, or address)";
+  if (SEED_MARKER_PATTERN.test(html)) return "a first-run data seed";
+  return null;
+}
+
 /**
  * Builds (or changes) an app and streams the HTML back as it's written, so
  * the page can show it being made instead of a spinner. Everything that can
@@ -86,7 +106,11 @@ export async function POST(request: Request) {
       const fail = (message: string) => {
         controller.enqueue(encoder.encode(`\n<!--EFFANT_ERROR:${message.replace(/-->/g, "")}-->`));
       };
-      stream.on("text", (delta) => controller.enqueue(encoder.encode(delta)));
+      let full = "";
+      stream.on("text", (delta) => {
+        full += delta;
+        controller.enqueue(encoder.encode(delta));
+      });
       let timedOut = false;
       const timer = setTimeout(() => {
         timedOut = true;
@@ -96,6 +120,16 @@ export async function POST(request: Request) {
         const final = await stream.finalMessage();
         if (final.stop_reason === "max_tokens") {
           fail("That app got too big to finish. Ask for something a little smaller, or split it into two.");
+        } else {
+          // The stream already reached the person by this point (it's shown
+          // live as it's written), so this can't un-send it — but it stops
+          // it from being saved or shared, which is what matters: this is
+          // caught before "Save and open" / "Open in Builder" ever run.
+          const seeded = findSeededDataIssue(full);
+          if (seeded) {
+            console.error("generate-app: blocked a generation with", seeded, "for user", user.id);
+            fail(`This app invented ${seeded} instead of starting empty, which isn't safe to save or share. Try again — it usually comes out clean the second time.`);
+          }
         }
       } catch (err) {
         console.error("generate-app: model call failed", err);
