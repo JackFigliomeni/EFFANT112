@@ -46,9 +46,14 @@ export default async function GalleryPage() {
   return (
     <section className="mx-auto max-w-4xl py-8">
       <div className="flex flex-wrap items-end justify-between gap-6">
-        <div>
+        {/* min-w-0 lets this flex item shrink below its content's natural
+            width; without it a long unbroken name (workspaces default to
+            "you@email.com's workspace") pushed the row wider than the
+            viewport. break-words is the actual wrap so it's still legible
+            instead of just no longer overflowing. */}
+        <div className="min-w-0">
           <span className="font-mono text-[10px] uppercase text-signal">Workspace</span>
-          <h1 className="mt-3 text-3xl font-semibold">{workspace?.name ?? "Your workspace"}</h1>
+          <h1 className="mt-3 break-words text-3xl font-semibold">{workspace?.name ?? "Your workspace"}</h1>
           {workspace && (
             <p className="mt-3 text-xs text-muted-foreground">
               Invite others with{" "}
