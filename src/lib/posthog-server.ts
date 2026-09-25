@@ -4,10 +4,15 @@ export function createPostHogClient(): PostHog | null {
   const projectToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
+  // Every call site does `const posthog = createPostHogClient(); if (posthog)
+  // {...}` inside the same try block as the actual request logic (Stripe,
+  // account deletion, ...) — analytics being unconfigured must never turn
+  // into "Couldn't start checkout" or "Couldn't delete your account" for
+  // something PostHog-shaped. Warn once per request instead of throwing.
   if (!projectToken) {
     if (process.env.NODE_ENV === "development") {
-      throw new Error(
-        "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is configured",
+      console.warn(
+        "PostHog: NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is missing or un-configured — events are being silently skipped.",
       );
     }
     return null;
@@ -15,9 +20,7 @@ export function createPostHogClient(): PostHog | null {
 
   if (!host) {
     if (process.env.NODE_ENV === "development") {
-      throw new Error(
-        "NEXT_PUBLIC_POSTHOG_HOST variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_HOST is configured",
-      );
+      console.warn("PostHog: NEXT_PUBLIC_POSTHOG_HOST is missing or un-configured — events are being silently skipped.");
     }
     return null;
   }
