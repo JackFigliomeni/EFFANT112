@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
+import { createPostHogClient } from "@/lib/posthog-server";
 
 export const runtime = "nodejs";
 
@@ -39,9 +40,19 @@ export async function POST(request: Request) {
       customer: profile.stripe_customer_id,
       return_url: `${origin}/settings`,
     });
+    const posthog = createPostHogClient();
+    if (posthog) {
+      posthog.capture({ distinctId: user.id, event: "billing_portal_opened" });
+      await posthog.shutdown();
+    }
     return NextResponse.json({ url: session.url });
   } catch (err) {
     console.error("stripe portal: failed to create session", err);
+    const posthog = createPostHogClient();
+    if (posthog) {
+      posthog.captureException(err, user.id);
+      await posthog.shutdown();
+    }
     return NextResponse.json({ error: "Couldn't open the billing portal." }, { status: 502 });
   }
 }

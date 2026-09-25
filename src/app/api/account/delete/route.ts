@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
+import { createPostHogClient } from "@/lib/posthog-server";
 
 export const runtime = "nodejs";
 
@@ -44,7 +45,22 @@ export async function POST() {
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) {
+    const posthog = createPostHogClient();
+    if (posthog) {
+      posthog.captureException(error, user.id);
+      await posthog.shutdown();
+    }
     return NextResponse.json({ error: `Couldn't delete your account: ${error.message}` }, { status: 500 });
+  }
+
+  const posthog = createPostHogClient();
+  if (posthog) {
+    posthog.capture({
+      distinctId: user.id,
+      event: "account_deleted",
+      properties: { had_active_subscription: Boolean(profile?.stripe_subscription_id) },
+    });
+    await posthog.shutdown();
   }
 
   return NextResponse.json({ ok: true });

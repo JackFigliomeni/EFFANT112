@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createPostHogClient } from "@/lib/posthog-server";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient();
+  const posthog = createPostHogClient();
 
   try {
     switch (event.type) {
@@ -47,6 +49,11 @@ export async function POST(request: Request) {
               typeof session.subscription === "string" ? session.subscription : null,
           })
           .eq("id", userId);
+        posthog?.capture({
+          distinctId: userId,
+          event: "subscription_started",
+          properties: { subscription_status: "active" },
+        });
         break;
       }
 
@@ -54,13 +61,22 @@ export async function POST(request: Request) {
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const active = subscription.status === "active" || subscription.status === "trialing";
-        await supabase
+        const { data: profile } = await supabase
           .from("profiles")
           .update({
             plan: active ? "pro" : "free",
             plan_status: subscription.status,
           })
-          .eq("stripe_subscription_id", subscription.id);
+          .eq("stripe_subscription_id", subscription.id)
+          .select("id")
+          .maybeSingle();
+        if (profile) {
+          posthog?.capture({
+            distinctId: profile.id,
+            event: "subscription_status_changed",
+            properties: { subscription_status: subscription.status, is_active: active },
+          });
+        }
         break;
       }
 
@@ -70,10 +86,12 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     console.error("stripe webhook: failed to apply event", event.type, err);
+    posthog?.captureException(err, `stripe_webhook:${event.id}`);
     // Still return 200 below — Stripe retries on non-2xx for up to 3 days,
     // and a persistent failure here (e.g. a bad user id) would just retry
     // forever without ever succeeding. Logged above for manual follow-up.
   }
 
+  await posthog?.shutdown();
   return NextResponse.json({ received: true });
 }

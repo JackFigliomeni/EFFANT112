@@ -1,5 +1,6 @@
 "use client";
 
+import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
@@ -8,6 +9,7 @@ export function SignOutButton() {
 
   async function signOut() {
     await supabase.auth.signOut();
+    posthog.reset();
     // A full navigation, not router.push()+refresh(): the equivalent
     // combo on the sign-in path proved unreliable in testing (Next's
     // client-side router cache could still reuse the layout's previous

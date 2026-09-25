@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { ShareMenu } from "@/components/ShareMenu";
 import { ToolRenderer } from "@/components/renderer/ToolRenderer";
@@ -87,6 +88,11 @@ export default function PublishPage() {
       setTools((prev) => prev?.map((t) => (t.id === selected.id ? { ...t, visibility: previous } : t)) ?? prev);
       setNotice(`Couldn't change that: ${error.message}`);
     } else {
+      posthog.capture("tool_visibility_changed", {
+        tool_id: selected.id,
+        previous_visibility: previous,
+        visibility,
+      });
       setNotice(visibility === "public" ? "Published. It's on the Community page now." : "Updated.");
     }
     setSaving(false);
