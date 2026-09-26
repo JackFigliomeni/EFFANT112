@@ -119,7 +119,16 @@ export default function GeneratePage() {
   async function build() {
     const html = await gen.run({ prompt });
     if (!html) return;
-    setResult(toResult(html, prompt));
+    // Written directly here, not left to the draft-sync effect further down:
+    // a real generation can take minutes, and clicking away mid-build (to
+    // check something, out of impatience, by accident) unmounts this page.
+    // React state setters on an unmounted component are silently dropped, so
+    // by the time this await resolves setResult() below may do nothing — but
+    // saveDraft() is a plain sessionStorage write with no such dependency,
+    // so the finished app survives even if nothing here is mounted anymore.
+    const next = toResult(html, prompt);
+    saveDraft({ prompt, result: next, history: [], accent });
+    setResult(next);
     setHistory([]);
     setVersion((v) => v + 1);
     setTab("preview");
@@ -130,8 +139,11 @@ export default function GeneratePage() {
     if (!result) return;
     const html = await gen.run({ prompt: change, currentHtml: result.html });
     if (!html) return;
-    setHistory((h) => [...h, result]);
-    setResult(toResult(html, result.name));
+    const nextHistory = [...history, result];
+    const next = toResult(html, result.name);
+    saveDraft({ prompt, result: next, history: nextHistory, accent }); // see build()
+    setHistory(nextHistory);
+    setResult(next);
     setChange("");
   }
 
